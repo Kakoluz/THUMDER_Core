@@ -123,14 +123,14 @@
         private readonly static uint LSBUOP    = 0x98000000;
         private readonly static uint LSHUOP    = 0x9c000000;
         private readonly static uint LSWOP     = 0xb0000000;
-
+        
         /// <summary>
         /// Contains a list of all supported operations and its arguments.
         /// </summary>
         private readonly static Instruction[] OpCodes = new Instruction[]
         {
             /* Arithmetic and Logic R-TYPE instructions.  */
-            new Instruction ( "nop",      (ALUOP|NOPF),   "N"     ),  /* NOP                          */
+            new Instruction ( "nop",      (ALUOP|NOPF),   ""      ),  /* NOP                          */
             new Instruction ( "add",      (ALUOP|ADDF),   "c,a,b" ),  /* Add                          */
             new Instruction ( "addu",     (ALUOP|ADDUF),  "c,a,b" ),  /* Add Unsigned                 */
             new Instruction ( "sub",      (ALUOP|SUBF),   "c,a,b" ),  /* SUB                          */
@@ -223,7 +223,7 @@
             new Instruction ( "jal",      JALOP,          "D"     ),  /* JAL, PC-relative 26 bits     */
             new Instruction ( "break",    BREAKOP,        "D"     ),  /* break to OS                  */
             new Instruction ( "trap" ,    TRAPOP,         "D"     ),  /* TRAP to OS                   */
-            new Instruction ( "rfe",      RFEOP,          "N"     ),  /* Return From Exception        */
+            new Instruction ( "rfe",      RFEOP,          ""      ),  /* Return From Exception        */
             new Instruction ( "call",     JOP,            "D"     ),  /* Jump, PC-relative 26 bits    */
 
             /* Jumps Trap and RFE I-TYPE.  */
