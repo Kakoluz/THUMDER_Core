@@ -1,4 +1,6 @@
-﻿namespace THUMDER.Interpreter
+﻿using System;
+
+namespace THUMDER.Interpreter
 {
     static internal partial class Assembler
     {
@@ -49,7 +51,7 @@
                             assembly.Labels.Add(label, (uint)assembly.DataSegment.Count);
                         }
                         
-                        uint args = 1;
+                        uint args;
                         switch (aux[i])
                         {
                             case ".align":
@@ -137,24 +139,13 @@
                     decoded = OpCodes[j].Name;
                     for (int x = 0; x < OpCodes[j].Args.Length; x++)
                     {
-                        switch (OpCodes[j].Args[x])
+                        decoded += OpCodes[j].Args[x] switch
                         {
-                            case 'i':
-                            case 'I':
-                                decoded += " " + instruction[i + x + 1].Remove('#'); //Remove # from immediate values if present.
-                                break;
-                            case 'd':
-                            case 'D':
-                                decoded += " " + instruction[i + x + 1].Remove('$'); //Remove $ from labels if present.
-                                break;
-                            case 'c':
-                            case 'b':
-                            case 'a':
-                                decoded += " " + instruction[i + x + 1].Substring(1); //Remove R or F from registers names.
-                                break;
-                            default:
-                                throw new ArgumentException("Invalid argument \"" + instruction[i + x + 1] + "\" at line " + lineCount);
-                        }
+                            'i' or 'I' => " " + instruction[i + x + 1].Remove('#'),//Remove # from immediate values if present.
+                            'd' or 'D' => " " + instruction[i + x + 1].Remove('$'),//Remove $ from labels if present.
+                            'c' or 'b' or 'a' => string.Concat(" ", instruction[i + x + 1].AsSpan(1)),//Remove R or F from registers names.
+                            _ => throw new ArgumentException("Invalid argument \"" + instruction[i + x + 1] + "\" at line " + lineCount),
+                        };
                     }
 
                     break;
