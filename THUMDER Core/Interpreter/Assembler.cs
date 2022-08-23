@@ -11,12 +11,13 @@
         {
             ASM assembly = new();
             bool dataSegement = false;
-            
+
             //Loop throug the file
-            foreach (string line in file)
+            for (int l = 0; l < file.Length; l++)
             {
+                string line = file[l];
                 //Skip empty lines.
-                if (line != String.Empty || line.Contains(';'))
+                if (line != String.Empty || line[0] == ';')
                 {
                     //Detect where whe are reading code or data.
                     if (line.Contains(".data"))
@@ -42,15 +43,18 @@
                     //Check for directives
                     if (dataSegement)
                     {
-                                            if (label != String.Empty)
-                    {
-                        assembly.Labels.Add(label, (uint)assembly.DataSegment.Count);
-                    }
+                        //Add label to label list.
+                        if (label != String.Empty)
+                        {
+                            assembly.Labels.Add(label, (uint)assembly.DataSegment.Count);
+                        }
+                        
                         uint args = 1;
                         switch (aux[i])
                         {
                             case ".align":
-                                //TODO, is this really necessary for an emulator?
+                                while (assembly.DataSegment.Count < (Math.Pow(2, uint.Parse(aux[i + 1]) - 1)) / 8)
+                                    assembly.DataSegment.Add(0x0);
                                 break;
                             case ".asciiz":
                                 //Process both strings the same for now
@@ -102,12 +106,63 @@
                                 }
                                 break;
                             default:
-                                throw new ArgumentException("Invalid data directive.");
+                                throw new ArgumentException("Invalid data directive \"" + aux[i] + "\" at line " + l);
                         }                       
+                    }
+                    else
+                    {
+                        //Add label to label list.
+                        if (label != String.Empty)
+                        {
+                            assembly.Labels.Add(label, (uint)assembly.CodeSegemnt.Count);
+                        }
+                        //Add instruction to code segment.
+                        assembly.CodeSegemnt.Add(DecodeInstruction(aux, label != String.Empty, l));
                     }
                 }
             }
             return assembly;
+        }
+
+        static string DecodeInstruction(string[] instruction, bool hasLabel, int lineCount)
+        {
+            string decoded = String.Empty;
+            int i = 0;
+            if (hasLabel)
+                ++i;
+            for (int j = 0; j < OpCodes.Length; j++)
+            {
+                if (OpCodes[j].Name == instruction[i].ToLower())
+                {
+                    decoded = OpCodes[j].Name;
+                    for (int x = 0; x < OpCodes[j].Args.Length; x++)
+                    {
+                        switch (OpCodes[j].Args[x])
+                        {
+                            case 'i':
+                            case 'I':
+                                decoded += " " + instruction[i + x + 1].Remove('#'); //Remove # from immediate values if present.
+                                break;
+                            case 'd':
+                            case 'D':
+                                decoded += " " + instruction[i + x + 1].Remove('$'); //Remove $ from labels if present.
+                                break;
+                            case 'c':
+                            case 'b':
+                            case 'a':
+                                decoded += " " + instruction[i + x + 1].Substring(1); //Remove R or F from registers names.
+                                break;
+                            default:
+                                throw new ArgumentException("Invalid argument \"" + instruction[i + x + 1] + "\" at line " + lineCount);
+                        }
+                    }
+
+                    break;
+                }
+            }
+            if (decoded == String.Empty)
+                throw new ArgumentException("Invalid instruction \"" + instruction[i] + "\" at line " + lineCount);
+            return decoded;
         }
 
         /* //Not needed, too much complexity for an interpreter.
