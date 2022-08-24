@@ -127,45 +127,45 @@ sgeui        ;Set if greater or equal
 ```
 #### Others
 ``` ASM
-Macros for I type instructions
+;Macros for I type instructions;
 mov          ;A move macro
 movu         ;A move macro, unsigned
 ```
 ``` ASM
-Load high Immediate I-TYPE instruction
+;Load high Immediate I-TYPE instruction;
 lhi          ;Load High Immediate
 lui          ;Load High Immediate
 sethi        ;Load High Immediate
 ```
 ``` ASM
-LOAD/STORE BYTE 8 bits I-TYPE
+;LOAD/STORE BYTE 8 bits I-TYPE;
 lb           ;Load Byte               
 lbu          ;Load Byte Unsigned      
 ldstbu       ;Load store Byte Unsigned
 sb           ;Store Byte              
 ```
 ``` ASM
-LOAD/STORE HALFWORD 16 bits
+;LOAD/STORE HALFWORD 16 bits;
 lh           ;Load Halfword               
 lhu          ;Load Halfword Unsigned      
 ldsthu       ;Load Store Halfword Unsigned
 sh           ;Store Halfword       
 ```
 ``` ASM
-LOAD/STORE WORD 32 bits
+;LOAD/STORE WORD 32 bits;
 lw           ;Load Word      
 sw           ;Store Word     
 ldstw        ;Load Store Word
 ```
 ``` ASM
-Branch PC-relative, 16 bits offset
+;Branch PC-relative, 16 bits offset;
 bneqz        ;Branch if a == 0
 bnez         ;Branch if a != 0
 beq          ;Branch if a == 0
 bne          ;Branch if a != 0
 ```
 ``` ASM
-Jumps Trap and RFE J-TYPE
+;Jumps Trap and RFE J-TYPE;
 j            ;Jump, PC-relative 26 bits
 jal          ;JAL, PC-relative 26 bits 
 break        ;break to OS              
@@ -174,12 +174,12 @@ rfe          ;Return From Exception
 call         ;Jump, PC-relative 26 bits
 ```
 ``` ASM
-Jumps Trap and RFE I-TYPE
+;Jumps Trap and RFE I-TYPE;
 jr           ;Jump Register, Abs (32 bits)
 jalr         ;JALR, Abs (32 bits)         
 ```
 ``` ASM
-Macros
+;Macros;
 retr         ;Jump Register, Abs (32 bits)
 ```
 
