@@ -41,13 +41,14 @@ namespace THUMDER
                         //Start TCP socket
                         return;
                     default:
-                        if (File.Exists(args[0]))
+                        try
                         {
-                            string[] file = File.ReadAllLines(args[0]);
+                            RunLocally(args[0]);
                         }
-                        else
+                        catch (Exception e)
                         {
-                            Console.WriteLine("File not found");
+                            Console.Error.WriteLine(e.Message);
+                            Console.ReadKey();
                         }
                         break;
                 }
@@ -65,6 +66,24 @@ namespace THUMDER
                 Console.WriteLine("  -v --version                       Show version information and exit");
             }
             return;
+        }
+
+        /// <summary>
+        /// Starts THUMDER as a local emulator.
+        /// </summary>
+        /// <param name="PathToFile">Path to the file to load.</param>
+        /// <exception cref="FileNotFoundException">The file doesn't exist or can't be read.</exception>
+        public static void RunLocally(string PathToFile)
+        {
+            if (File.Exists(PathToFile))
+            {
+                string[] file = File.ReadAllLines(PathToFile);
+                ASM assembly = Assembler.Decode(file);
+            }
+            else
+            {
+                throw new FileNotFoundException("File not found or can't be read.");
+            }
         }
     }
 }

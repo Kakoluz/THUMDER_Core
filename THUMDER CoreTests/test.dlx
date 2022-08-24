@@ -1,0 +1,32 @@
+.data
+.global count
+count: .word 10
+.global table
+;table: .space count*4 ;unsupported
+table: .space 40
+
+.text
+.global main
+main: addi r1, r2, 0x0
+addi r2, r0, 0x2
+addi r16, r0, 0x10
+addi r18, r0, 0x0
+nextvalue: addi r4, r1, 0x0
+loop: seq r4, r1, r3
+bnez r4, isprim
+divu r6, r2, r5
+multu r7, r6, r5
+subu r8, r2, r7
+beqz r8, isnoprim
+addi r3, r3, 0x4
+divu r20, r16, r18
+divu r22, r16, r18
+j loop
+isprim: sw #0(r0), r0
+addi r1, r1, 0x4
+srli r10, r1, 0x2
+sge r11, r10, r9
+bnez r11, finish
+isnoprim: addi r2, r2, 0x1
+j nextvalue
+finish: trap 0x0

@@ -2,7 +2,7 @@
 
 namespace THUMDER.Interpreter
 {
-    static internal partial class Assembler
+    public static partial class Assembler
     {
         /// <summary>
         /// Transforms assembly data directives into byte values and instructions syntax.
@@ -11,140 +11,166 @@ namespace THUMDER.Interpreter
         /// <returns>An assembly ready to be read by the emulated CPU.</returns>
         public static ASM Decode(in string[] file)
         {
-            ASM assembly = new();
-            bool dataSegement = false;
+            ASM assembly = new ASM();
+            short? dataSegement = null;
+            short? textSegment = null;
 
-            //Loop throug the file
-            for (int l = 0; l < file.Length; l++)
+            //check for labels and locate where the data and code are located.
+
+            for (uint l = 0; l < file.Length; l++)
             {
-                string line = file[l];
-                //Skip empty lines.
-                if (line != String.Empty || line[0] == ';')
+                if (file[l].Contains(';'))
                 {
-                    //Detect where whe are reading code or data.
-                    if (line.Contains(".data"))
+                    if (file[l].IndexOf(';') < 2) //There may be a space before the ;
                     {
-                        dataSegement = true;
-                    }
-                    else if (line.Contains(".text"))
-                    {
-                        dataSegement = false;
-                    }
-
-                    //Split the current line into words to process one by one.
-                    string[] aux = line.Split(' ');
-                    uint i = 0;
-                    string label = String.Empty;
-                    //check for labels
-                    if (aux[0].Contains(':'))
-                    {
-                        label = aux[0].Remove(aux[0].Length - 1);
-                        ++i;
-                    }
-
-                    //Check for directives
-                    if (dataSegement)
-                    {
-                        //Add label to label list.
-                        if (label != String.Empty)
-                        {
-                            assembly.Labels.Add(label, (uint)assembly.DataSegment.Count);
-                        }
-                        
-                        uint args;
-                        switch (aux[i])
-                        {
-                            case ".align":
-                                while (assembly.DataSegment.Count < (Math.Pow(2, uint.Parse(aux[i + 1]) - 1)) / 8)
-                                    assembly.DataSegment.Add(0x0);
-                                break;
-                            case ".asciiz":
-                                //Process both strings the same for now
-                            case ".asii":
-                                //TODO
-                                break;
-                            case ".byte":
-                                args = 1;
-                                while (i + args < aux.Length)
-                                {
-                                    assembly.DataSegment.Add(byte.Parse(aux[i + args]));
-                                }
-                                break;
-                            case ".double":
-                                args = 1;
-                                while (i + args < aux.Length)
-                                {
-                                    byte[] array = BitConverter.GetBytes(double.Parse(aux[i + args]));
-                                    foreach(byte b in array)
-                                        assembly.DataSegment.Add(b);
-                                }
-                                break;
-                            case ".float":
-                                args = 1;
-                                while (i + args < aux.Length)
-                                {
-                                    byte[] array = BitConverter.GetBytes(float.Parse(aux[i + args]));
-                                    foreach (byte b in array)
-                                        assembly.DataSegment.Add(b);
-                                }
-                                break;
-                            case ".global":
-                                assembly.GlobalLabels.Add(aux[i+1]);
-                                break;
-                            case ".space":
-                                uint spaces = uint.Parse(aux[i + 1]);
-                                for (int j = 0; j < spaces; j++)
-                                {
-                                    assembly.DataSegment.Add(0x0);
-                                }
-                                break;
-                            case ".word":
-                                args = 1;
-                                while (i + args < aux.Length)
-                                {
-                                    byte[] array = BitConverter.GetBytes(int.Parse(aux[i + args]));
-                                    foreach (byte b in array)
-                                        assembly.DataSegment.Add(b);
-                                }
-                                break;
-                            default:
-                                throw new ArgumentException("Invalid data directive \"" + aux[i] + "\" at line " + l);
-                        }                       
+                        file[l] = String.Empty; //Remove the entire line.
                     }
                     else
                     {
-                        //Add label to label list.
-                        if (label != String.Empty)
-                        {
-                            assembly.Labels.Add(label, (uint)assembly.CodeSegemnt.Count);
-                        }
-                        //Add instruction to code segment.
-                        assembly.CodeSegemnt.Add(DecodeInstruction(aux, label != String.Empty, l));
+                        file[l] = file[l].Split(';')[0]; //Remove comments from end of the line.
                     }
                 }
+                if (file[l].Contains(".data"))
+                {
+                    dataSegement = (short)(l + 1); //The next line contains the data segment.
+                    file[l] = String.Empty; //Delete line to avoid re processing.
+                }
+                if (file[l].Contains(".text"))
+                {
+                    textSegment = (short)(l + 1); //The next line contains the code segment.
+                    file[l] = String.Empty; //Delete line to avoid re processing.
+                }
+                if (file[l].Contains(':'))
+                {
+                    assembly.Labels.Add(file[l].Split(':')[0], l); //Get the part before : as label
+                    file[l] = file[l].Split(':')[1]; //Remove the label directive from the text
+                }
+                if (file[l].Contains(".global"))
+                {
+                    assembly.GlobalLabels.Add(file[l].Substring(file[l].IndexOf(' ')), l + 1); //Split label and directive.
+                    file[l] = String.Empty; //Delete line to avoid re processing.
+                }
+            }
+            
+            //Check if there is code segement specified.
+            
+            if (textSegment == null)
+            {
+                throw new ArgumentException("Missing .text directive.\nNo code in the file?");
+            }
+            
+            //if there is code then do a scan in the data segment to get variables.
+            
+            else if (dataSegement != null)
+            {
+                for (int l = (int)dataSegement; l < textSegment; l++)
+                {
+                    if (file[l] != String.Empty)
+                        DecodeData(file[l], l, ref assembly); //Decode data directives and add them to the assembly.
+                }
+            }
+
+            //Then check the code syntax.
+            
+            for (int l = (int)textSegment; l < file.Length; l++ )
+            {
+                if (file[l] != String.Empty)
+                    assembly.CodeSegemnt.Add(DecodeInstruction(file[l], l)); //Check instruction sintax and add them to the assembly.
             }
             return assembly;
         }
 
-        static string DecodeInstruction(string[] instruction, bool hasLabel, int lineCount)
+        // This function doesn't return bytes[] because the .align directive needs the current assembly size.
+        /// <summary>
+        /// Adds decoded data directives to the assembly.
+        /// </summary>
+        /// <param name="data">The data line of the text file.</param>
+        /// <param name="line">The line number of the text file.</param>
+        /// <param name="assembly">The assembly to wich data should be added.</param>
+        /// <exception cref="ArgumentException">If its an unknwon data directive.</exception>
+        private static void DecodeData(in string data,in int line, ref ASM assembly)
+         {
+            string[] aux = data.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            int args = aux.Length - 1;
+            int i;
+            switch (aux[0])
+            {
+                case ".align":
+                    while ((assembly.DataSegment.Count % (Math.Pow(2, uint.Parse(aux[1]) - 1)) / 8) != 0)
+                        assembly.DataSegment.Add(0x0);
+                    break;
+                case ".asciiz":
+                //Process both strings the same for now
+                case ".asii":
+                    //TODO
+                    break;
+                case ".byte":
+                    i  = 1;
+                    while (i <= args)
+                    {
+                        assembly.DataSegment.Add(byte.Parse(aux[i]));
+                        ++i;
+                    }
+                    break;
+                case ".double":
+                    i = 1;
+                    while (i <= args)
+                    {
+                        byte[] array = BitConverter.GetBytes(double.Parse(aux[i]));
+                        foreach (byte b in array)
+                            assembly.DataSegment.Add(b);
+                        ++i;
+                    }
+                    break;
+                case ".float":
+                    i = 1;
+                    while (i <= args)
+                    {
+                        byte[] array = BitConverter.GetBytes(float.Parse(aux[i]));
+                        foreach (byte b in array)
+                            assembly.DataSegment.Add(b);
+                        ++i;
+                    }
+                    break;
+                case ".space":
+                    uint spaces = uint.Parse(aux[1]) * 4;
+                    for (int j = 0; j < spaces; j++)
+                    {
+                        assembly.DataSegment.Add(0x0);
+                    }
+                    break;
+                case ".word":
+                    i = 1;
+                    while (i <= args)
+                    {
+                        byte[] array = BitConverter.GetBytes(int.Parse(aux[i]));
+                        foreach (byte b in array)
+                            assembly.DataSegment.Add(b);
+                        ++i;
+                    }
+                    break;
+                default:
+                    throw new ArgumentException("Invalid data directive \"" + aux[0] + "\" at line " + line);
+            }
+        }
+        private static string DecodeInstruction(in string instruction,in int lineCount)
         {
+            string[] cleaned = instruction.Replace(',', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             string decoded = String.Empty;
             int i = 0;
-            if (hasLabel)
-                ++i;
             for (int j = 0; j < OpCodes.Length; j++)
             {
-                if (OpCodes[j].Name == instruction[i].ToLower())
+                if (OpCodes[j].Name == cleaned[i].ToLower())
                 {
                     decoded = OpCodes[j].Name;
                     for (int x = 0; x < OpCodes[j].Args.Length; x++)
                     {
                         decoded += OpCodes[j].Args[x] switch
                         {
-                            'i' or 'I' => " " + instruction[i + x + 1].Remove('#'),//Remove # from immediate values if present.
-                            'd' or 'D' => " " + instruction[i + x + 1].Remove('$'),//Remove $ from labels if present.
-                            'c' or 'b' or 'a' => string.Concat(" ", instruction[i + x + 1].AsSpan(1)),//Remove R or F from registers names.
-                            _ => throw new ArgumentException("Invalid argument \"" + instruction[i + x + 1] + "\" at line " + lineCount),
+                            'i' or 'I' => " " + cleaned[i + x + 1].Remove('#'),//Remove # from immediate values if present.
+                            'd' or 'D' => " " + cleaned[i + x + 1].Remove('$'),//Remove $ from labels if present.
+                            'c' or 'b' or 'a' => string.Concat(" ", cleaned[i + x + 1].AsSpan(1)),//Remove R or F from registers names.
+                            _ => throw new ArgumentException("Invalid argument \"" + cleaned[i + x + 1] + "\" at line " + lineCount),
                         };
                     }
 

@@ -1,6 +1,6 @@
 ﻿namespace THUMDER.Interpreter
 {
-    internal static partial class Assembler
+    public static partial class Assembler
     {
         /// <summary>
         /// Struct that represent a DLX instruction for execution.
