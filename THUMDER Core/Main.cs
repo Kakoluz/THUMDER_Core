@@ -28,11 +28,10 @@ namespace THUMDER
                     case "-v":
                     case "--version":
                         Console.WriteLine("THUMDER Core " + version);
-                        Console.WriteLine("Copyright © 2022 Escuela Politécnica Superior de Jaén.");
+                        Console.WriteLine("Copyright © 2022 Alberto Rodríguez Torres");
                         Console.WriteLine("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.");
                         Console.WriteLine("This is free software: you are free to change and redistribute it.");
                         Console.WriteLine("There is NO WARRANTY, to the extent permitted by law.");
-                        Console.WriteLine("\n Written by Alberto Rodríguez Torres.");
                         break;
                     case "-S":
                     case "-s":
