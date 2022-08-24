@@ -68,122 +68,122 @@ Except trap 0 none of the traps are implemented.
 
 #### Arithmetic and Logic R-TYPE instructions
 ``` ASM
-nop         NOP                          
-add         Add                          
-addu        Add Unsigned                 
-sub         SUB                          
-subu        Sub Unsigned                 
-mult        MULTIPLY                     
-multu       MULTIPLY Unsigned            
-div         DIVIDE                       
-divu        DIVIDE Unsigned              
-and         AND                          
-or          OR                           
-xor         Exclusive OR                 
-sll         SHIFT LEFT LOGICAL           
-sra         SHIFT RIGHT ARITHMETIC       
-srl         SHIFT RIGHT LOGICAL          
-seq         Set if equal                 
-sne         Set if not equal             
-slt         Set if less                  
-sgt         Set if greater               
-sle         Set if less or equal         
-sge         Set if greater or equal      
-sequ        Set if equal unsigned        
-sneu        Set if not equal unsigned    
-sltu        Set if less unsigned         
-sgtu        Set if greater unsigned      
-sleu        Set if less or equal unsigned
-sgeu        Set if greater or equal      
-mvts        Move to special register     
-mvfs        Move from special register
-bswap       ??? Was not documented           NOT IMPLEMENTED  
-lut         ????? same as above              NOT IMPLEMENTED  
+nop          ;NOP                          
+add          ;Add                          
+addu         ;Add Unsigned                 
+sub          ;SUB                          
+subu         ;Sub Unsigned                 
+mult         ;MULTIPLY                     
+multu        ;MULTIPLY Unsigned            
+div          ;DIVIDE                       
+divu         ;DIVIDE Unsigned              
+and          ;AND                          
+or           ;OR                           
+xor          ;Exclusive OR                 
+sll          ;SHIFT LEFT LOGICAL           
+sra          ;SHIFT RIGHT ARITHMETIC       
+srl          ;SHIFT RIGHT LOGICAL          
+seq          ;Set if equal                 
+sne          ;Set if not equal             
+slt          ;Set if less                  
+sgt          ;Set if greater               
+sle          ;Set if less or equal         
+sge          ;Set if greater or equal      
+sequ         ;Set if equal unsigned        
+sneu         ;Set if not equal unsigned    
+sltu         ;Set if less unsigned         
+sgtu         ;Set if greater unsigned      
+sleu         ;Set if less or equal unsigned
+sgeu         ;Set if greater or equal      
+mvts         ;Move to special register     
+mvfs         ;Move from special register
+bswap        ;??? Was not documented           NOT IMPLEMENTED  
+lut          ;????? same as above              NOT IMPLEMENTED  
 ```
 #### Arithmetic and Logical Immediate I-TYPE instructions
 ``` ASM
-addi         Add Immediate                
-addui        Add Usigned Immediate        
-subi         Sub Immediate                
-subui        Sub Unsigned Immedated       
-andi         AND Immediate                
-ori          OR  Immediate                
-xori         Exclusive OR  Immediate      
-slli         SHIFT LEFT LOCICAL Immediate 
-srai         SHIFT RIGHT ARITH. Immediate 
-srli         SHIFT RIGHT LOGICAL Immediate
-seqi         Set if equal                 
-snei         Set if not equal             
-slti         Set if less                  
-sgti         Set if greater               
-slei         Set if less or equal         
-sgei         Set if greater or equal      
-sequi        Set if equal                 
-sneui        Set if not equal             
-sltui        Set if less                  
-sgtui        Set if greater               
-sleui        Set if less or equal         
-sgeui        Set if greater or equal      
+addi         ;Add Immediate                
+addui        ;Add Usigned Immediate        
+subi         ;Sub Immediate                
+subui        ;Sub Unsigned Immedated       
+andi         ;AND Immediate                
+ori          ;OR  Immediate                
+xori         ;Exclusive OR  Immediate      
+slli         ;SHIFT LEFT LOCICAL Immediate 
+srai         ;SHIFT RIGHT ARITH. Immediate 
+srli         ;SHIFT RIGHT LOGICAL Immediate
+seqi         ;Set if equal                 
+snei         ;Set if not equal             
+slti         ;Set if less                  
+sgti         ;Set if greater               
+slei         ;Set if less or equal         
+sgei         ;Set if greater or equal      
+sequi        ;Set if equal                 
+sneui        ;Set if not equal             
+sltui        ;Set if less                  
+sgtui        ;Set if greater               
+sleui        ;Set if less or equal         
+sgeui        ;Set if greater or equal      
 ```
 #### Others
 ``` ASM
 Macros for I type instructions
-mov          A move macro
-movu         A move macro, unsigned
+mov          ;A move macro
+movu         ;A move macro, unsigned
 ```
 ``` ASM
 Load high Immediate I-TYPE instruction
-lhi          Load High Immediate
-lui          Load High Immediate
-sethi        Load High Immediate
+lhi          ;Load High Immediate
+lui          ;Load High Immediate
+sethi        ;Load High Immediate
 ```
 ``` ASM
 LOAD/STORE BYTE 8 bits I-TYPE
-lb           Load Byte               
-lbu          Load Byte Unsigned      
-ldstbu       Load store Byte Unsigned
-sb           Store Byte              
+lb           ;Load Byte               
+lbu          ;Load Byte Unsigned      
+ldstbu       ;Load store Byte Unsigned
+sb           ;Store Byte              
 ```
 ``` ASM
 LOAD/STORE HALFWORD 16 bits
-lh           Load Halfword               
-lhu          Load Halfword Unsigned      
-ldsthu       Load Store Halfword Unsigned
-sh           Store Halfword       
+lh           ;Load Halfword               
+lhu          ;Load Halfword Unsigned      
+ldsthu       ;Load Store Halfword Unsigned
+sh           ;Store Halfword       
 ```
 ``` ASM
 LOAD/STORE WORD 32 bits
-lw           Load Word      
-sw           Store Word     
-ldstw        Load Store Word
+lw           ;Load Word      
+sw           ;Store Word     
+ldstw        ;Load Store Word
 ```
 ``` ASM
 Branch PC-relative, 16 bits offset
-bneqz        Branch if a == 0
-bnez         Branch if a != 0
-beq          Branch if a == 0
-bne          Branch if a != 0
+bneqz        ;Branch if a == 0
+bnez         ;Branch if a != 0
+beq          ;Branch if a == 0
+bne          ;Branch if a != 0
 ```
 ``` ASM
 Jumps Trap and RFE J-TYPE
-j            Jump, PC-relative 26 bits
-jal          JAL, PC-relative 26 bits 
-break        break to OS              
-trap         TRAP to OS               
-rfe          Return From Exception    
-call         Jump, PC-relative 26 bits
+j            ;Jump, PC-relative 26 bits
+jal          ;JAL, PC-relative 26 bits 
+break        ;break to OS              
+trap         ;TRAP to OS               
+rfe          ;Return From Exception    
+call         ;Jump, PC-relative 26 bits
 ```
 ``` ASM
 Jumps Trap and RFE I-TYPE
-jr           Jump Register, Abs (32 bits)
-jalr         JALR, Abs (32 bits)         
+jr           ;Jump Register, Abs (32 bits)
+jalr         ;JALR, Abs (32 bits)         
 ```
 ``` ASM
 Macros
-retr         Jump Register, Abs (32 bits)
+retr         ;Jump Register, Abs (32 bits)
 ```
 
 ## License
-***THUMDER Core*** is available on Github under the [GNU GPLv3 license](https://github.com/Kakoluz/THUMDER_Core/blob/development/LICENSE.txt)
+***THUMDER Core*** is available on Github under the [GNU GPLv3 license](https://github.com/Kakoluz/THUMDER_Core/blob/master/LICENSE.txt)
 
 Copyright © 2022 Alberto Rodríguez Torres
