@@ -10,6 +10,7 @@ namespace THUMDER.Interpreter.Tests
         {
             ASM actual = Assembler.Decode(File.ReadAllLines("../../../test.dlx"));
             ASM expected = testASM();
+            bool a = expected == actual;
             Assert.AreEqual(expected, actual);
         }
 
@@ -18,25 +19,22 @@ namespace THUMDER.Interpreter.Tests
             ASM testing = new ASM();
             //Add labels
             testing.Labels.Add("count", 2);
-            testing.Labels.Add("table", 5);
-            testing.Labels.Add("main", 9);
-            testing.Labels.Add("nextvalue", 13);
-            testing.Labels.Add("loop", 14);
-            testing.Labels.Add("isprim", 24);
-            testing.Labels.Add("isnoprim", 29);
-            testing.Labels.Add("finish", 31);
+            testing.Labels.Add("table", 4);
+            testing.Labels.Add("main", 8);
+            testing.Labels.Add("nextvalue", 12);
+            testing.Labels.Add("loop", 13);
+            testing.Labels.Add("isprim", 23);
+            testing.Labels.Add("isnoprim", 28);
+            testing.Labels.Add("finish", 30);
 
             //Add global labels
             testing.GlobalLabels.Add("count", 2);
-            testing.GlobalLabels.Add("table", 5);
-            testing.GlobalLabels.Add("main", 9);
+            testing.GlobalLabels.Add("table", 4);
+            testing.GlobalLabels.Add("main", 8);
 
             //Add data directives
-            byte[] aux = BitConverter.GetBytes((int)10);
-            foreach (byte b in aux)
-                testing.DataSegment.Add(b);
-            for (int i = 0; i < 40*4; i++)
-                testing.DataSegment.Add(0x0);
+            testing.DataSegment.Add(".word 10");
+            testing.DataSegment.Add(".space count*4");
 
             //Add code
             testing.CodeSegment.Add("addi 1 2 0x0");

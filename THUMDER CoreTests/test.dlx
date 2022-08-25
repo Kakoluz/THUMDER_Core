@@ -2,8 +2,7 @@
 .global count
 count: .word 10
 .global table
-;table: .space count*4 ;unsupported
-table: .space 40
+table: .space count*4 ;test comment
 
 .text
 .global main

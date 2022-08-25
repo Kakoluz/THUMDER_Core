@@ -70,7 +70,7 @@ namespace THUMDER.Interpreter
                 for (int l = (int)dataSegement; l < textSegment; l++)
                 {
                     if (file[l] != String.Empty)
-                        DecodeData(file[l], l, ref assembly); //Decode data directives and add them to the assembly.
+                        assembly.DataSegment.Add(DecodeData(file[l], l)); //Decode data directives and add them to the assembly.
                 }
             }
 
@@ -84,7 +84,6 @@ namespace THUMDER.Interpreter
             return assembly;
         }
 
-        // This function doesn't return bytes[] because the .align directive needs the current assembly size.
         /// <summary>
         /// Adds decoded data directives to the assembly.
         /// </summary>
@@ -92,70 +91,20 @@ namespace THUMDER.Interpreter
         /// <param name="line">The line number of the text file.</param>
         /// <param name="assembly">The assembly to wich data should be added.</param>
         /// <exception cref="ArgumentException">If its an unknwon data directive.</exception>
-        private static void DecodeData(in string data,in int line, ref ASM assembly)
-         {
+        private static string DecodeData(in string data,in int line)
+        {
             string[] aux = data.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            int args = aux.Length - 1;
-            int i;
-            switch (aux[0])
+            string clean = string.Empty;
+            foreach (string s in aux)
             {
-                case ".align":
-                    while ((assembly.DataSegment.Count % (Math.Pow(2, uint.Parse(aux[1]) - 1)) / 8) != 0)
-                        assembly.DataSegment.Add(0x0);
-                    break;
-                case ".asciiz":
-                //Process both strings the same for now
-                case ".asii":
-                    //TODO
-                    break;
-                case ".byte":
-                    i  = 1;
-                    while (i <= args)
-                    {
-                        assembly.DataSegment.Add(byte.Parse(aux[i]));
-                        ++i;
-                    }
-                    break;
-                case ".double":
-                    i = 1;
-                    while (i <= args)
-                    {
-                        byte[] array = BitConverter.GetBytes(double.Parse(aux[i]));
-                        foreach (byte b in array)
-                            assembly.DataSegment.Add(b);
-                        ++i;
-                    }
-                    break;
-                case ".float":
-                    i = 1;
-                    while (i <= args)
-                    {
-                        byte[] array = BitConverter.GetBytes(float.Parse(aux[i]));
-                        foreach (byte b in array)
-                            assembly.DataSegment.Add(b);
-                        ++i;
-                    }
-                    break;
-                case ".space":
-                    uint spaces = uint.Parse(aux[1]) * 4;
-                    for (int j = 0; j < spaces; j++)
-                    {
-                        assembly.DataSegment.Add(0x0);
-                    }
-                    break;
-                case ".word":
-                    i = 1;
-                    while (i <= args)
-                    {
-                        byte[] array = BitConverter.GetBytes(int.Parse(aux[i]));
-                        foreach (byte b in array)
-                            assembly.DataSegment.Add(b);
-                        ++i;
-                    }
-                    break;
-                default:
-                    throw new ArgumentException("Invalid data directive \"" + aux[0] + "\" at line " + line);
+                string temp = s;
+                while (s.IndexOf(',') != -1)
+                {
+                    temp = s.Remove(s.IndexOf(','));
+                }
+                clean = string.Concat(clean, ' ', temp);
             }
+            return clean.Trim();
         }
         private static string DecodeInstruction(in string instruction,in int lineCount)
         {
