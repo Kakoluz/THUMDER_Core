@@ -196,21 +196,21 @@
             new Instruction ( "sethi",    LHIOP,          "b,i"   ),  /* Load High Immediate          */
             
             /* LOAD/STORE BYTE 8 bits I-TYPE.  */
-            new Instruction ( "lb",       LBOP,           "b,a,I" ),  /* Load Byte                    */
-            new Instruction ( "lbu",      LBUOP,          "b,a,I" ),  /* Load Byte Unsigned           */
-            new Instruction ( "ldstbu",   LSBUOP,         "b,a,I" ),  /* Load store Byte Unsigned     */
-            new Instruction ( "sb",       SBOP,           "b,a,I" ),  /* Store Byte                   */
+            new Instruction ( "lb",       LBOP,           "b,a" ),  /* Load Byte                    */
+            new Instruction ( "lbu",      LBUOP,          "b,a" ),  /* Load Byte Unsigned           */
+            new Instruction ( "ldstbu",   LSBUOP,         "b,a" ),  /* Load store Byte Unsigned     */
+            new Instruction ( "sb",       SBOP,           "b,a" ),  /* Store Byte                   */
 
             /* LOAD/STORE HALFWORD 16 bits.  */
-            new Instruction ( "lh",       LHOP,           "b,a,I" ),  /* Load Halfword                */
-            new Instruction ( "lhu",      LHUOP,          "b,a,I" ),  /* Load Halfword Unsigned       */
-            new Instruction ( "ldsthu",   LSHUOP,         "b,a,I" ),  /* Load Store Halfword Unsigned */
-            new Instruction ( "sh",       SHOP,           "b,a,I" ),  /* Store Halfword               */
+            new Instruction ( "lh",       LHOP,           "b,a" ),  /* Load Halfword                */
+            new Instruction ( "lhu",      LHUOP,          "b,a" ),  /* Load Halfword Unsigned       */
+            new Instruction ( "ldsthu",   LSHUOP,         "b,a" ),  /* Load Store Halfword Unsigned */
+            new Instruction ( "sh",       SHOP,           "b,a" ),  /* Store Halfword               */
 
             /* LOAD/STORE WORD 32 bits.  */
-            new Instruction ( "lw",       LWOP,           "b,a,I" ),  /* Load Word                    */
-            new Instruction ( "sw",       SWOP,           "b,a,I" ),  /* Store Word                   */
-            new Instruction ( "ldstw",    LSWOP,          "b,a,I" ),  /* Load Store Word              */
+            new Instruction ( "lw",       LWOP,           "b,a" ),  /* Load Word                    */
+            new Instruction ( "sw",       SWOP,           "b,a" ),  /* Store Word                   */
+            new Instruction ( "ldstw",    LSWOP,          "b,a" ),  /* Load Store Word              */
 
             /* Branch PC-relative, 16 bits offset.  */
             new Instruction ( "beqz",     BEQOP,          "a,d"   ),   /* Branch if a == 0             */

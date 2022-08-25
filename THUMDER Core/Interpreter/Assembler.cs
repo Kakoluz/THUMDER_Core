@@ -43,11 +43,15 @@ namespace THUMDER.Interpreter
                 if (file[l].Contains(':'))
                 {
                     assembly.Labels.Add(file[l].Split(':')[0], l); //Get the part before : as label
+                    if (assembly.GlobalLabels.ContainsKey(file[l].Split(':')[0]))
+                    {
+                        assembly.GlobalLabels[file[l].Split(':')[0]] = l; //Update the global label if it exists.
+                    }
                     file[l] = file[l].Split(':')[1]; //Remove the label directive from the text
                 }
                 if (file[l].Contains(".global"))
                 {
-                    assembly.GlobalLabels.Add(file[l].Substring(file[l].IndexOf(' ')), l + 1); //Split label and directive.
+                    assembly.GlobalLabels.Add(file[l].Substring(file[l].IndexOf(' ')+1), l + 1); //Split label and directive.
                     file[l] = String.Empty; //Delete line to avoid re processing.
                 }
             }
@@ -75,7 +79,7 @@ namespace THUMDER.Interpreter
             for (int l = (int)textSegment; l < file.Length; l++ )
             {
                 if (file[l] != String.Empty)
-                    assembly.CodeSegemnt.Add(DecodeInstruction(file[l], l)); //Check instruction sintax and add them to the assembly.
+                    assembly.CodeSegment.Add(DecodeInstruction(file[l], l)); //Check instruction sintax and add them to the assembly.
             }
             return assembly;
         }
@@ -165,15 +169,31 @@ namespace THUMDER.Interpreter
                     decoded = OpCodes[j].Name;
                     for (int x = 0; x < OpCodes[j].Args.Length; x++)
                     {
-                        decoded += OpCodes[j].Args[x] switch
+                        switch (OpCodes[j].Args[x])
                         {
-                            'i' or 'I' => " " + cleaned[i + x + 1].Remove('#'),//Remove # from immediate values if present.
-                            'd' or 'D' => " " + cleaned[i + x + 1].Remove('$'),//Remove $ from labels if present.
-                            'c' or 'b' or 'a' => string.Concat(" ", cleaned[i + x + 1].AsSpan(1)),//Remove R or F from registers names.
-                            _ => throw new ArgumentException("Invalid argument \"" + cleaned[i + x + 1] + "\" at line " + lineCount),
-                        };
+                            case 'i':
+                            case 'I':
+                                if (cleaned[i + x + 1].Contains('#'))
+                                    decoded += " " + cleaned[i + x + 1].Remove(cleaned[i + x + 1].IndexOf('#')); //Remove # from immediate values if present.
+                                else
+                                    decoded += " " + cleaned[i + x + 1];
+                                break;
+                            case 'd':
+                            case 'D':
+                                if (cleaned[i + x + 1].Contains('$'))
+                                    decoded += " " + cleaned[i + x + 1].Remove('$'); //Remove $ from labels if present.
+                                else
+                                    decoded += " " + cleaned[i + x + 1];
+                                break;
+                            case 'c':
+                            case 'b':
+                            case 'a':
+                                decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(1));
+                                break;
+                            default:
+                                throw new ArgumentException("Invalid argument \"" + cleaned[i + x + 1] + "\" at line " + lineCount); //Remove R or F from registers names.
+                        }
                     }
-
                     break;
                 }
             }
