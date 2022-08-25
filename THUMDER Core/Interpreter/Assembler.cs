@@ -89,7 +89,6 @@ namespace THUMDER.Interpreter
         /// </summary>
         /// <param name="data">The data line of the text file.</param>
         /// <param name="line">The line number of the text file.</param>
-        /// <param name="assembly">The assembly to wich data should be added.</param>
         /// <exception cref="ArgumentException">If its an unknwon data directive.</exception>
         private static string DecodeData(in string data,in int line)
         {
