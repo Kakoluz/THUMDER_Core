@@ -12,14 +12,14 @@ Currently there are no installer or package as the project isn't ready yet. Ther
 Building ***THUMDER Core*** is as simple as opening the project in Visual Studio and building it. It comes with preconfigured profiles for Windows, Linux and Mac. And versions for x64 and ARM.
 
 ***Dependencies***
-``` cmd
+``` console
 - Visual Studio 2019 or newer
 - .Net Core 6 SDK
 ```
 
 ## How to use
 Currently the only way to use ***THUMDER Core*** is as a local command line emulator, it accepts the following sintax:
-``` sh
+``` console
 ./THUMDER_Core [File] [Options]
     -h --help         Show the help message
     -S --server       Launch as a network server
