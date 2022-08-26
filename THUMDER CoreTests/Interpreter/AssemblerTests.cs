@@ -14,6 +14,42 @@ namespace THUMDER.Interpreter.Tests
             Assert.AreEqual(expected, actual);
         }
 
+        [TestMethod()]
+        public void DataSyntaxErrorTest()
+        {
+            try
+            {
+                string[] test = {".data", ".aspace 5", ".text" };
+                Assembler.Decode(test);
+            }
+            catch (ArgumentException e)
+            {
+                Assert.IsTrue(true);
+            }
+            catch(Exception)
+            {
+                Assert.Fail();
+            }
+        }
+
+        [TestMethod()]
+        public void CodeSyntaxErrorTest()
+        {
+            try
+            {
+                string[] test = { ".text", "addi r1 r2 r3", "j 2 5" };
+                Assembler.Decode(test);
+            }
+            catch (ArgumentException e)
+            {
+                Assert.IsTrue(true);
+            }
+            catch (Exception)
+            {
+                Assert.Fail();
+            }
+        }
+
         private ASM testASM()
         {
             ASM testing = new ASM();
