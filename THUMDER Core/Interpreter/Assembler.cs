@@ -93,17 +93,31 @@ namespace THUMDER.Interpreter
         private static string DecodeData(in string data,in int line)
         {
             string[] aux = data.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            string clean = string.Empty;
-            foreach (string s in aux)
+            if (!(aux[0].Contains(".align")
+                || aux[0].Contains(".space")
+                || aux[0].Contains(".byte")
+                || aux[0].Contains(".word")
+                || aux[0].Contains(".float")
+                || aux[0].Contains(".double")
+                || aux[0].Contains(".ascii")
+                || aux[0].Contains(".asciiz")))
             {
-                string temp = s;
-                while (s.IndexOf(',') != -1)
-                {
-                    temp = s.Remove(s.IndexOf(','));
-                }
-                clean = string.Concat(clean, ' ', temp);
+                throw new ArgumentException("Unknown data directive " + aux[0] + " on line " + line + ".");
             }
-            return clean.Trim();
+            else
+            {
+                string clean = string.Empty;
+                foreach (string s in aux)
+                {
+                    string temp = s;
+                    while (s.IndexOf(',') != -1)
+                    {
+                        temp = s.Remove(s.IndexOf(','));
+                    }
+                    clean = string.Concat(clean, ' ', temp);
+                }
+                return clean.Trim();
+            }
         }
         private static string DecodeInstruction(in string instruction,in int lineCount)
         {
