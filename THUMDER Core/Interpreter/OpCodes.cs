@@ -5,7 +5,7 @@
         /// <summary>
         /// Struct that represent a DLX instruction for execution.
         /// </summary>
-        private readonly struct Instruction
+        public readonly struct Instruction
         {
             /// <summary>
             /// Builds a generic instruction.
@@ -127,7 +127,7 @@
         /// <summary>
         /// Contains a list of all supported operations and its arguments.
         /// </summary>
-        private readonly static Instruction[] OpCodes = new Instruction[]
+        public readonly static Instruction[] OpCodes = new Instruction[]
         {
             /* Arithmetic and Logic R-TYPE instructions.  */
             new Instruction ( "nop",      (ALUOP|NOPF),   ""      ),  /* NOP                          */
