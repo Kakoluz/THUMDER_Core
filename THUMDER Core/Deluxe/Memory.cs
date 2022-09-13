@@ -1,11 +1,13 @@
-﻿namespace THUMDER.Deluxe
+﻿using System.Collections.Specialized;
+
+namespace THUMDER.Deluxe
 {
     internal class Memory
     {
         /// <summary>
         /// Memory as a 32-bit unsigned integer array. 
         /// </summary>
-        private uint[] memory;
+        private BitVector32[] memory;
 
         /// <summary>
         /// Singleton instance internal value
@@ -26,22 +28,51 @@
         }
         private Memory() //The Memory constructor should only be called once per execution  
         {
-            this.memory = new uint[32768];
+            this.memory = new BitVector32[32768];
         }
 
         /// <summary>
-        /// Unified memory access to emulate the hardware behaviour.
+        /// Emulate the hardware behaviour of the memory controller.
         /// </summary>
         /// <param name="Address"> Emulated address bus.</param>
         /// <param name="Data"> Emulated data bus.</param>
         /// <param name="RW"> Specifies mode, high for writes, low for reads.</param>
-        public static void MemoryAccess(in uint Address, ref byte[] Data, in bool RW)
+        public static void HardwareAccess(in uint Address, ref int Data, in bool RW)
         {
             if (!RW)
-                Data = BitConverter.GetBytes(Instance.memory[Address]);
+                Data = Instance.memory[Address].Data;
             else
-                Instance.memory[Address] = BitConverter.ToUInt32(Data);
+                Instance.memory[Address] = new BitVector32(Data);
             return; 
+        }
+
+        /// <summary>
+        /// Access the memory and returns the specified memory address.
+        /// </summary>
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>Contents of the memory cell in address.</returns>
+        public static BitVector32 Read (in uint Address)
+        {
+            return Instance.memory[Address];
+        }
+
+        /// <summary>
+        /// Writes data to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public static void Write (in uint Address, in int Data)
+        {
+            Instance.memory[Address] = new BitVector32(Data);
+        }
+        /// <summary>
+        /// Writes data to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public static void Write(in uint Address, in BitVector32 Data)
+        {
+            Instance.memory[Address] = new BitVector32(Data);
         }
 
         /// <summary>
@@ -50,7 +81,7 @@
         /// <param name="newSize">New memory size.</param>
         public static void ResizeMemory(in uint newSize)
         {
-            Instance.memory = new uint[newSize];
+            Instance.memory = new BitVector32[newSize];
         }
     }
 }
