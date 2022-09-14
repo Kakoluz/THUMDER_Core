@@ -6,7 +6,7 @@
         public List<string> CodeSegment { get; private set; }
         public Dictionary<string, uint> Labels { get; private set; }
         public Dictionary<string, uint> GlobalLabels { get; private set; }
-        public int? dataAddress { get; set; }
+        public int dataAddress { get; set; }
         public int textAddress { get; set; }
 
         public ASM()
@@ -15,8 +15,8 @@
             this.CodeSegment = new List<string>();
             this.Labels = new Dictionary<string, uint>();
             this.GlobalLabels = new Dictionary<string, uint>();
-            this.dataAddress = null;
-            this.textAddress = 0;
+            this.dataAddress = 0;
+            this.textAddress = 1000;
         }
 
         public static bool operator ==(in ASM one, in ASM other)
