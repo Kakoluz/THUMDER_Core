@@ -2,7 +2,7 @@
 
 namespace THUMDER.Deluxe
 {
-    internal class Memory
+    internal class MemoryManager
     {
         /// <summary>
         /// Memory as a 32-bit unsigned integer array. 
@@ -12,21 +12,21 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Singleton instance internal value
         /// </summary>
-        private static Memory? instance = null;
+        private static MemoryManager? instance = null;
         /// <summary>
         /// Memory singleton instance
         /// </summary>
-        private static Memory Instance
+        private static MemoryManager Instance
         {
             set => instance = value;
             get
             {   //Might need to add locks or lazy implementation for thread safety.
                 if (instance == null)
-                    instance = new Memory();
+                    instance = new MemoryManager();
                 return instance;
             }
         }
-        private Memory() //The Memory constructor should only be called once per execution  
+        private MemoryManager() //The Memory constructor should only be called once per execution  
         {
             this.memory = new BitVector32[32768 / 4];
         }
