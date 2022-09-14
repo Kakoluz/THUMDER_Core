@@ -47,17 +47,21 @@ namespace THUMDER.Interpreter
                 }
                 if (file[l].Contains(':'))
                 {
-                    assembly.Labels.Add(file[l].Split(':')[0], l); //Get the part before : as label
-                    if (assembly.GlobalLabels.ContainsKey(file[l].Split(':')[0]))
-                    {
-                        assembly.GlobalLabels[file[l].Split(':')[0]] = l; //Update the global label if it exists.
-                    }
+                    assembly.Labels.Add(l, file[l].Split(':')[0]); //Get the part before : as label
                     file[l] = file[l].Split(':')[1]; //Remove the label directive from the text
                 }
                 if (file[l].Contains(".global"))
                 {
-                    assembly.GlobalLabels.Add(file[l].Substring(file[l].IndexOf(' ')+1), l + 1); //Split label and directive.
+                    assembly.GlobalLabels.Add(l+1, file[l].Substring(file[l].IndexOf(' ')+1)); //Split label and directive.
                     file[l] = String.Empty; //Delete line to avoid re processing.
+                }
+                foreach (var item in assembly.GlobalLabels)
+                {
+                    if (item.Value == assembly.Labels[l])
+                    {
+                        assembly.GlobalLabels.Remove(item.Key);
+                        assembly.GlobalLabels.Add(l, assembly.Labels[l]);
+                    }//Update the global labels if there is conflict.
                 }
             }
             

@@ -4,8 +4,8 @@
     {
         public List<string> DataSegment { get; private set; }
         public List<string> CodeSegment { get; private set; }
-        public Dictionary<string, uint> Labels { get; private set; }
-        public Dictionary<string, uint> GlobalLabels { get; private set; }
+        public Dictionary<uint, string> Labels { get; private set; }
+        public Dictionary<uint, string> GlobalLabels { get; private set; }
         public int dataAddress { get; set; }
         public int textAddress { get; set; }
 
@@ -13,8 +13,8 @@
         {
             this.DataSegment = new List<string>();
             this.CodeSegment = new List<string>();
-            this.Labels = new Dictionary<string, uint>();
-            this.GlobalLabels = new Dictionary<string, uint>();
+            this.Labels = new Dictionary<uint, string>();
+            this.GlobalLabels = new Dictionary<uint, string>();
             this.dataAddress = 0;
             this.textAddress = 1000;
         }
@@ -37,7 +37,7 @@
                         return false;
                     }
                 }
-                foreach (KeyValuePair<string, uint> entry in one.Labels)
+                foreach (KeyValuePair<uint, string> entry in one.Labels)
                 {
                     if (other.Labels.ContainsKey(entry.Key))
                     {
@@ -47,7 +47,7 @@
                         }
                     }
                 }
-                foreach (KeyValuePair<string, uint> entry in one.GlobalLabels)
+                foreach (KeyValuePair<uint, string> entry in one.GlobalLabels)
                 {
                     if (other.GlobalLabels.ContainsKey(entry.Key))
                     {
