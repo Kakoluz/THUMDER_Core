@@ -18,9 +18,9 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Memory singleton instance
         /// </summary>
-        private static MemoryManager Instance
+        public static MemoryManager Instance
         {
-            set => instance = value;
+            private set => instance = value;
             get
             {   //Might need to add locks or lazy implementation for thread safety.
                 if (instance == null)
