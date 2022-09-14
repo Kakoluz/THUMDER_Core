@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Cryptography.X509Certificates;
 
 namespace THUMDER.Interpreter
 {
@@ -32,11 +33,15 @@ namespace THUMDER.Interpreter
                 }
                 if (file[l].Contains(".data"))
                 {
+                    string[] aux = file[l].Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    assembly.dataAddress = aux.Length > 1 ? int.Parse(aux[1]) : 0;
                     dataSegement = (short)(l + 1); //The next line contains the data segment.
                     file[l] = String.Empty; //Delete line to avoid re processing.
                 }
                 if (file[l].Contains(".text"))
                 {
+                    string[] aux = file[l].Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    assembly.textAddress = aux.Length > 1 ? int.Parse(aux[1]) : 1000;
                     textSegment = (short)(l + 1); //The next line contains the code segment.
                     file[l] = String.Empty; //Delete line to avoid re processing.
                 }

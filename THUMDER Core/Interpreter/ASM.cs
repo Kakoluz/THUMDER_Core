@@ -1,7 +1,4 @@
-﻿using System.Data.Common;
-using System.Runtime.CompilerServices;
-
-namespace THUMDER.Interpreter
+﻿namespace THUMDER.Interpreter
 {
     public struct ASM
     {
@@ -9,6 +6,8 @@ namespace THUMDER.Interpreter
         public List<string> CodeSegment { get; private set; }
         public Dictionary<string, uint> Labels { get; private set; }
         public Dictionary<string, uint> GlobalLabels { get; private set; }
+        public int? dataAddress { get; set; }
+        public int textAddress { get; set; }
 
         public ASM()
         {
@@ -16,22 +15,24 @@ namespace THUMDER.Interpreter
             this.CodeSegment = new List<string>();
             this.Labels = new Dictionary<string, uint>();
             this.GlobalLabels = new Dictionary<string, uint>();
+            this.dataAddress = null;
+            this.textAddress = 0;
         }
 
         public static bool operator ==(in ASM one, in ASM other)
         {
-            if(one.DataSegment.Count == other.DataSegment.Count && one.CodeSegment.Count == other.CodeSegment.Count && one.Labels.Count == other.Labels.Count && one.GlobalLabels.Count == other.GlobalLabels.Count)
+            if (one.DataSegment.Count == other.DataSegment.Count && one.CodeSegment.Count == other.CodeSegment.Count && one.Labels.Count == other.Labels.Count && one.GlobalLabels.Count == other.GlobalLabels.Count && one.dataAddress == other.dataAddress && one.textAddress == other.textAddress)
             {
-                for(int i = 0; i< one.DataSegment.Count; i ++)
+                for (int i = 0; i < one.DataSegment.Count; i++)
                 {
-                    if(!(one.DataSegment[i] == other.DataSegment[i]))
+                    if (!(one.DataSegment[i] == other.DataSegment[i]))
                     {
                         return false;
                     }
                 }
                 for (int i = 0; i < one.CodeSegment.Count; i++)
                 {
-                    if(!(one.CodeSegment[i] == other.CodeSegment[i]))
+                    if (!(one.CodeSegment[i] == other.CodeSegment[i]))
                     {
                         return false;
                     }
@@ -40,7 +41,7 @@ namespace THUMDER.Interpreter
                 {
                     if (other.Labels.ContainsKey(entry.Key))
                     {
-                        if(!(other.Labels[entry.Key] == entry.Value))
+                        if (!(other.Labels[entry.Key] == entry.Value))
                         {
                             return false;
                         }
@@ -50,14 +51,16 @@ namespace THUMDER.Interpreter
                 {
                     if (other.GlobalLabels.ContainsKey(entry.Key))
                     {
-                        if(!(other.GlobalLabels[entry.Key] == entry.Value))
+                        if (!(other.GlobalLabels[entry.Key] == entry.Value))
                         {
                             return false;
                         }
                     }
                 }
+                return true;
             }
-            return true;
+            else
+                return false;
         }
         public static bool operator !=(in ASM one, in ASM other) => !(one == other);
 
