@@ -54,19 +54,19 @@ namespace THUMDER.Interpreter.Tests
         {
             ASM testing = new ASM();
             //Add labels
-            testing.Labels.Add("count", 2);
-            testing.Labels.Add("table", 4);
-            testing.Labels.Add("main", 8);
-            testing.Labels.Add("nextvalue", 12);
-            testing.Labels.Add("loop", 13);
-            testing.Labels.Add("isprim", 23);
-            testing.Labels.Add("isnoprim", 28);
-            testing.Labels.Add("finish", 30);
+            testing.Labels.Add(2, "count");
+            testing.Labels.Add(4, "table");
+            testing.Labels.Add(8, "main");
+            testing.Labels.Add(12, "nextvalue");
+            testing.Labels.Add(13, "loop");
+            testing.Labels.Add(23, "isprim");
+            testing.Labels.Add(28, "isnoprim");
+            testing.Labels.Add(30, "finish");
 
             //Add global labels
-            testing.GlobalLabels.Add("count", 2);
-            testing.GlobalLabels.Add("table", 4);
-            testing.GlobalLabels.Add("main", 8);
+            testing.GlobalLabels.Add(2, "count");
+            testing.GlobalLabels.Add(4, "table");
+            testing.GlobalLabels.Add(8, "main");
 
             //Add data directives
             testing.DataSegment.Add(".word 10");
