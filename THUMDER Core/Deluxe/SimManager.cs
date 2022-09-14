@@ -1,5 +1,6 @@
 ﻿using THUMDER.Interpreter;
 using System.Collections.Specialized;
+using System.Text;
 
 namespace THUMDER.Deluxe
 {
@@ -94,12 +95,12 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// General Purpose 32 bits registers.
         /// </summary>
-        private int[] Registers;
+        private BitVector32[] Registers;
 
         /// <summary>
         /// Floating point 32 bits registers.
         /// </summary>
-        private float[] fRegisters;
+        private BitVector32[] fRegisters;
 
         /// <summary>
         /// Special Register to store data fetched.
@@ -119,7 +120,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Lists of pending writebacks.
         /// </summary>
-        private List<KeyValuePair<int, BitVector32>> PedingWriteBacks = new List<KeyValuePair<int, BitVector32>>();
+        private List<KeyValuePair<int, byte[]>> PedingMemWrites = new List<KeyValuePair<int, byte[]>>();
 
         /// <summary>
         /// Instruction name extracted from memory.
@@ -150,8 +151,67 @@ namespace THUMDER.Deluxe
             for (int i = 0; i < ALUunits; i++)
                 this.alus.Add(new ALU());
                 this.PC = 0;
-            this.Registers = new int[32];
-            this.fRegisters = new float[32];
+            this.Registers = new BitVector32[32];
+            this.fRegisters = new BitVector32[32];
+        }
+
+        public static void LoadProgram(ASM assembly)
+        {
+            int dataLength = assembly.dataAddress;
+            for (int i = 0; i < assembly.DataSegment.Count; i++)
+            {
+                string[] aux = assembly.DataSegment[i].Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                switch (aux[0])
+                {
+                    case ".word":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            MemoryManager.Instance.WriteWord((uint)(assembly.dataAddress + dataLength), int.Parse(aux[j]));
+                            dataLength += 4;
+                        }
+                        break;
+                    case ".ascii":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            byte[] bytes = Encoding.ASCII.GetBytes(aux[j]);
+                            foreach (byte b in bytes)
+                                MemoryManager.Instance.WriteByte((uint)(assembly.dataAddress + dataLength++), b);
+                        }
+                        break;
+                    case ".asciiz":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            byte[] bytes = Encoding.ASCII.GetBytes(aux[j]);
+                            foreach (byte b in bytes)
+                                MemoryManager.Instance.WriteByte((uint)(assembly.dataAddress + dataLength++), b);
+                            MemoryManager.Instance.WriteByte((uint)(assembly.dataAddress + dataLength++), 0);   //0 byte for the z in asciiz
+                        }
+                        break;
+                    case ".byte":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            MemoryManager.Instance.WriteByte((uint)(assembly.dataAddress + dataLength++), byte.Parse(aux[1]));
+                        }
+                        break;
+                    case ".float":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            MemoryManager.Instance.WriteFloat((uint)(assembly.dataAddress + dataLength), float.Parse(aux[1]));
+                            dataLength += 4;
+                        }
+                        break;
+                    case ".double":
+                        for (int j = 1; j < aux.Length; j++)
+                        {
+                            MemoryManager.Instance.WriteDouble((uint)(assembly.dataAddress + dataLength), double.Parse(aux[1]));
+                            dataLength += 8;
+                        }
+                        break;
+                }
+            }
+            if (assembly.dataAddress + dataLength > assembly.textAddress)
+                throw new AccessViolationException("Data segment overwrites code segment.");
+            //TODO assemble instructions.
         }
 
         /// <summary>
@@ -161,7 +221,7 @@ namespace THUMDER.Deluxe
         public static void ResizeMemory(in uint newSize)
         {
             Memsize = newSize;
-            Memory.ResizeMemory(newSize);
+            MemoryManager.Instance.ResizeMemory(newSize);
         }
 
         /// <summary>
@@ -194,8 +254,8 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void IF()
         {
-            IDRegister = Memory.Read(PC);
-            ++PC;
+            IDRegister = MemoryManager.Instance.ReadWordAsBitVector(PC);
+            PC += 4;
         }
 
         /// <summary>
@@ -203,63 +263,18 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ID()
         {
-            //R-Type Instruction
+            //R-Type Instruction format.
             BitVector32.Section funct = BitVector32.CreateSection(64);
             BitVector32.Section shamt = BitVector32.CreateSection(32, funct);
             BitVector32.Section rd    = BitVector32.CreateSection(32, shamt);
             BitVector32.Section rs2   = BitVector32.CreateSection(32, rd);
             BitVector32.Section rs1   = BitVector32.CreateSection(32, rs2);
             BitVector32.Section op    = BitVector32.CreateSection(32, rs1);
-            //I-Type Instruction
+            //I-Type Instruction format.
             BitVector32.Section address = BitVector32.CreateSection(short.MaxValue);
             // For J-Types we need to create a new bitvector32 and put the op bits to 0 and convert to int32
-            int i;
-            for (i = 0; i < Assembler.OpCodes.Length; i++)
-            {
-                //Check for R-type ALU operation function
-                if (IDRegister[op] != 0)
-                {
-                    if (new BitVector32((int)Assembler.OpCodes[i].Opcode)[funct] == IDRegister[funct])
-                    {
-                        this.funct         = IDRegister[funct];
-                        this.shamt         = IDRegister[shamt];
-                        this.rd            = IDRegister[rd];
-                        this.rs2           = IDRegister[rs2];
-                        this.rs1           = IDRegister[rs1];
-                        this.IDOpcode      = IDRegister[op];
-                        this.address       = null;
-                        this.IDInstruction = Assembler.OpCodes[i].Name;
-                        this.currentInstruction = Assembler.OpCodes[i]; //Might be needed
-                        bool assigned = false;
-                        if (this.funct > 0x11)
-                        foreach (var alu in alus)
-                        {
-                           if(!alu.busy)
-                           {
-                                alu.LoadValues((int)this.rs1, (int)this.rs2, (short)this.funct);
-                                assigned = true;
-                                break;
-                           }                               
-                        }
-                        IDhold = assigned ? true : false;
-                    }
-                }
-                else //Check for any other instrction
-                {
-                    if (new BitVector32((int)Assembler.OpCodes[i].Opcode)[op] == IDRegister[op])
-                    {
-                        this.IDOpcode      = IDRegister[op];
-                        this.rd            = IDRegister[rs2]; //use the RS2 mask that holds the values in bits 25:21
-                        this.rs1           = IDRegister[rs1];
-                        this.address       = IDRegister[address];
-                        this.funct         = null;
-                        this.shamt         = null;
-                        this.rs2           = null;
-                        this.IDInstruction = Assembler.OpCodes[i].Name;
-                        this.currentInstruction = Assembler.OpCodes[i]; //Might be needed
-                    }
-                }
-            }
+            
+            
         }
 
         private void EX()
@@ -269,14 +284,18 @@ namespace THUMDER.Deluxe
 
         private void MEM()
         {
-            
+            var wb = PedingMemWrites[0];
+            PedingMemWrites.RemoveAt(0);
+            uint address = (uint)wb.Key;
+            foreach (byte b in wb.Value)
+            {
+                MemoryManager.Instance.WriteByte(address++, b);
+            }
         }
 
         private void WB()
         {
-            var wb = PedingWriteBacks[0];
-            PedingWriteBacks.RemoveAt(0);
-            Memory.Write((uint) wb.Key, wb.Value);
+
         }
     }
 }
