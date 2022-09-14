@@ -1,4 +1,6 @@
 ﻿using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Security.Cryptography;
 
 namespace THUMDER.Deluxe
 {
@@ -7,7 +9,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Memory as a 32-bit unsigned integer array. 
         /// </summary>
-        private BitVector32[] memory;
+        private byte[] memory;
 
         /// <summary>
         /// Singleton instance internal value
@@ -28,61 +30,152 @@ namespace THUMDER.Deluxe
         }
         private MemoryManager() //The Memory constructor should only be called once per execution  
         {
-            this.memory = new BitVector32[32768 / 4];
+            this.memory = new byte[32768];
         }
 
         /// <summary>
-        /// Emulate the hardware behaviour of the memory controller.
+        /// Writes a Byte to memory.
         /// </summary>
-        /// <param name="Address"> Emulated address bus.</param>
-        /// <param name="Data"> Emulated data bus.</param>
-        /// <param name="RW"> Specifies mode, high for writes, low for reads.</param>
-        public static void HardwareAccess(in uint Address, ref int Data, in bool RW)
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteByte(in uint Address, in byte Data)
         {
-            if (!RW)
-                Data = Instance.memory[Address].Data;
-            else
-                Instance.memory[Address] = new BitVector32(Data);
-            return; 
+            memory[Address] = Data;
+        }
+
+        /// <summary>
+        /// Reads a byte from memory.
+        /// </summary>
+        /// <param name="Address">The address to read from.</param>
+        /// <returns>The byte that memory cell.</returns>
+        public byte ReadByte(in uint Address)
+        {
+            return memory[Address];
+        }
+
+        /// <summary>
+        /// Writes a Word to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteWord (in uint Address, in int Data)
+        {
+            byte[] aux = BitConverter.GetBytes(Data);
+            memory[Address]     = aux[0];
+            memory[Address + 1] = aux[1];
+            memory[Address + 2] = aux[2];
+            memory[Address + 3] = aux[3];
+        }
+        
+        /// <summary>
+        /// Writes a Word to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteWord (in uint Address, in BitVector32 Data)
+        {
+            WriteWord(Address, Data.Data);
         }
 
         /// <summary>
         /// Access the memory and returns the specified memory address.
         /// </summary>
         /// <param name="Address">The address of the memory to read.</param>
-        /// <returns>Contents of the memory cell in address.</returns>
-        public static BitVector32 Read (in uint Address)
+        /// <returns>A word starting in the specified address.</returns>
+        public int ReadWord(in uint Address)
         {
-            return Instance.memory[Address];
+            return BitConverter.ToInt32(memory, (int)Address);
         }
 
         /// <summary>
-        /// Writes data to memory.
+        /// Access the memory and returns the specified memory address.
         /// </summary>
-        /// <param name="Address">The address to write.</param>
-        /// <param name="Data">Data to write in the memory.</param>
-        public static void Write (in uint Address, in int Data)
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>A word starting in the specified address as a BitVector32.</returns>
+        public BitVector32 ReadWordAsBitVector(in uint Address)
         {
-            Instance.memory[Address] = new BitVector32(Data);
+            return new BitVector32(BitConverter.ToInt32(memory, (int)Address));
         }
+
         /// <summary>
-        /// Writes data to memory.
+        /// Writes a Float to memory.
         /// </summary>
         /// <param name="Address">The address to write.</param>
         /// <param name="Data">Data to write in the memory.</param>
-        public static void Write(in uint Address, in BitVector32 Data)
+        public void WriteFloat(in uint Address, in float Data)
         {
-            Instance.memory[Address] = new BitVector32(Data);
+            byte[] aux = BitConverter.GetBytes(Data);
+            memory[Address] = aux[0];
+            memory[Address + 1] = aux[1];
+            memory[Address + 2] = aux[2];
+            memory[Address + 3] = aux[3];
+        }
+
+        /// <summary>
+        /// Writes a Float to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteFloat (in uint Address, in BitVector32 Data)
+        {
+            WriteFloat(Address, Data.Data);
+        }
+
+        /// <summary>
+        /// Access the memory and returns the specified memory address.
+        /// </summary>
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>A float starting in the specified address.</returns>
+        public float ReadFloat(in uint Address)
+        {
+            return BitConverter.ToSingle(memory, (int)Address);
+        }
+
+        /// <summary>
+        /// Access the memory and returns the specified memory address.
+        /// </summary>
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>A word starting in the specified address as a BitVector32.</returns>
+        public BitVector32 ReadFloatAsBitVector(in uint Address)
+        {
+            return new BitVector32(BitConverter.ToInt32(memory, (int)Address));
+        }
+
+        /// <summary>
+        /// Writes a Double to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteDouble(in uint Address, in double Data)
+        {
+            byte[] aux = BitConverter.GetBytes(Data);
+            memory[Address]     = aux[0];
+            memory[Address + 1] = aux[1];
+            memory[Address + 2] = aux[2];
+            memory[Address + 3] = aux[3];
+            memory[Address + 4] = aux[4];
+            memory[Address + 5] = aux[5];
+            memory[Address + 6] = aux[6];
+            memory[Address + 7] = aux[7];
+        }
+
+        /// <summary>
+        /// Access the memory and returns the specified memory address.
+        /// </summary>
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>A double starting in the specified address.</returns>
+        public double ReadDouble(in uint Address)
+        {
+            return BitConverter.ToDouble(memory, (int)Address);
         }
 
         /// <summary>
         /// Clears the memory and resizes it to the specified value.
         /// </summary>
         /// <param name="newSize">New memory size.</param>
-        public static void ResizeMemory(in uint newSize)
+        public void ResizeMemory (in uint newSize)
         {
-            uint sizeFormatted = newSize % 4 == 0 ? (newSize / 4) : ((newSize / 4) + 1); //Size is given in bytes. Bitvector32 is 4 bytes.
-            Instance.memory = new BitVector32[sizeFormatted];
+            memory = new byte[newSize];
         }
     }
 }
