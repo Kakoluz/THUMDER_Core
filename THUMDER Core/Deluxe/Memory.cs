@@ -28,7 +28,7 @@ namespace THUMDER.Deluxe
         }
         private Memory() //The Memory constructor should only be called once per execution  
         {
-            this.memory = new BitVector32[32768];
+            this.memory = new BitVector32[32768 / 4];
         }
 
         /// <summary>
@@ -81,7 +81,8 @@ namespace THUMDER.Deluxe
         /// <param name="newSize">New memory size.</param>
         public static void ResizeMemory(in uint newSize)
         {
-            Instance.memory = new BitVector32[newSize];
+            uint sizeFormatted = newSize % 4 == 0 ? (newSize / 4) : ((newSize / 4) + 1); //Size is given in bytes. Bitvector32 is 4 bytes.
+            Instance.memory = new BitVector32[sizeFormatted];
         }
     }
 }
