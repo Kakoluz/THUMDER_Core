@@ -172,46 +172,5 @@ namespace THUMDER.Interpreter
                 throw new ArgumentException("Invalid instruction \"" + instruction[i] + "\" at line " + lineCount);
             return decoded;
         }
-
-        /* //Not needed, too much complexity for an interpreter.
-        /// <summary>
-        /// Checks and builds an instruction from an assembly line of code.
-        /// </summary>
-        /// <param name="line">The line trimmed in format: <c>Instruction arguments</c>. </param>
-        /// <returns>The internal DLX operation code assembled.</returns>
-        /// <exception cref="ArgumentException">
-        /// Thrown when the instruction or its parameters are incorrectly written.
-        /// </exception>
-        private static uint AssembleInstruction(in string[] line)
-        {
-            uint instruction = 0x00000000;
-            bool found = false;
-            ushort index = 0;
-            while(index < OpCodes.Length || !found)
-            {
-                ++index;
-                if (OpCodes[index].Name == line[0])
-                    found = true;
-            }
-            if (!found || OpCodes[index].Args.Length != (line.Length -1))
-                throw new ArgumentException("Invalid instruction.", nameof(line));
-            foreach (char arg in OpCodes[index].Args)
-            {
-                switch (arg)
-                {
-                    case 'c':
-                        instruction |= ((uint) arg << 11);
-                        break;
-                    case 'a':
-                        instruction |= ((uint) arg << 21);
-                        break;
-                    case 'b':
-                        instruction |= ((uint) arg << 16);
-                        break;
-                }
-            }
-            return instruction;
-        }
-        */
     }
 }
