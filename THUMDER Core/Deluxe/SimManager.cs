@@ -50,6 +50,37 @@ namespace THUMDER.Deluxe
         public static int DIVDelay { get; private set; } = 19;
 
         /// <summary>
+        /// R-Type Instruction function field.
+        /// </summary>
+        static readonly BitVector32.Section functSection = BitVector32.CreateSection(64);
+        /// <summary>
+        /// R-Type Instruction displacement field.
+        /// </summary>
+        static readonly BitVector32.Section shamtSection = BitVector32.CreateSection(32, functSection);
+        /// <summary>
+        /// R-Type Instruction destiny register field.
+        /// </summary>
+        static readonly BitVector32.Section rdSection = BitVector32.CreateSection(32, shamtSection);
+        /// <summary>
+        /// Source 2 register field or immediate number for I-type.
+        /// </summary>
+        static readonly BitVector32.Section rs2Section = BitVector32.CreateSection(32, rdSection);
+        /// <summary>
+        /// Source 1 register field.
+        /// </summary>
+        static readonly BitVector32.Section rs1Section = BitVector32.CreateSection(32, rs2Section);
+        /// <summary>
+        /// Address section for I-Type Instructions.
+        /// </summary>
+        static readonly BitVector32.Section addressSection = BitVector32.CreateSection(short.MaxValue); //Displacement based on RS1.
+        // For J-Types we need to create a new bitvector32 and put the op bits to 0 and convert to int32
+
+        /// <summary>
+        /// Instruction OpCode field.
+        /// </summary>
+        static readonly BitVector32.Section opSection = BitVector32.CreateSection(32, rs1Section);
+
+        /// <summary>
         /// Singleton internal instance.
         /// </summary>
         private static SimManager? instance = null;
@@ -135,6 +166,12 @@ namespace THUMDER.Deluxe
         /// Stages of execution where the CPU might need to wait.
         /// </summary>
         private bool IDhold, MEMHold, WBHold, ForwadingHold;
+
+        /// <summary>
+        /// Dictionary that holds what memory address is represented by each label.
+        /// </summary>
+        private static readonly Dictionary<string, uint> labels = new Dictionary<string, uint>();
+
         private SimManager()
         {
             this.alus = new List<ALU>();
@@ -155,12 +192,23 @@ namespace THUMDER.Deluxe
             this.fRegisters = new BitVector32[32];
         }
 
+        /// <summary>
+        /// Processes the next instructions and places them into memory.
+        /// </summary>
+        /// <param name="assembly">The pre processed and cleaned assembly.</param>
+        /// <exception cref="AccessViolationException">If data section is too long and overwrites data segment.</exception>
+        /// <exception cref="ArgumentException">If the argument is not correctly formatted.</exception>
+        /// <exception cref="NotImplementedException">If the instruction or the argument is not implemented.</exception>
         public static void LoadProgram(ASM assembly)
         {
             int dataLength = assembly.dataAddress;
-            for (int i = 0; i < assembly.DataSegment.Count; i++)
+            for (uint i = 0; i < assembly.DataSegment.Count; i++)
             {
-                string[] aux = assembly.DataSegment[i].Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                if (assembly.Labels.ContainsKey(i))
+                {
+                    labels.Add(assembly.Labels[i], (uint)(dataLength + assembly.dataAddress));
+                }
+                string[] aux = assembly.DataSegment[(int)i].Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                 switch (aux[0])
                 {
                     case ".word":
@@ -211,7 +259,87 @@ namespace THUMDER.Deluxe
             }
             if (assembly.dataAddress + dataLength > assembly.textAddress)
                 throw new AccessViolationException("Data segment overwrites code segment.");
-            //TODO assemble instructions.
+
+            //Now assemble the instructions. and place them in memory.
+            BitVector32 assembledInstruction;
+            int instructionsPlaced = 0;
+            foreach (string instruction in assembly.CodeSegment)
+            {
+                int parsedArguments = 1;
+                Assembler.Instruction instructionSyntax = Assembler.OpCodes[0]; //Default to NOP so compiler doesn't complain.
+                assembledInstruction = new BitVector32();
+                string[] aux = instruction.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                foreach (var opcode in Assembler.OpCodes)
+                {
+                    if (opcode.Name == aux[0])
+                    {
+                        instructionSyntax = opcode;
+                        if (opcode.Opcode > 51)
+                            assembledInstruction[opSection] = (int)opcode.Opcode;
+                        else
+                        {
+                            assembledInstruction[opSection] = 0; //For ALU operations we use opcode 0 and the funct parameter.
+                            assembledInstruction[functSection] = (int)opcode.Opcode;
+                        }
+                        break;
+                    }
+                }
+                //Process the arguments.
+                foreach (char arg in instructionSyntax.Args)
+                {
+                    if (arg != ',')
+                    {
+                        string[] splitted;
+                        switch (arg)
+                        {
+                            case 'c':
+                                assembledInstruction[rdSection] = int.Parse(aux[parsedArguments]);
+                                break;
+                            case 'a':
+                                if (aux[parsedArguments].Contains('('))
+                                {
+                                    splitted = aux[parsedArguments].Replace('(', ' ').Replace(')', ' ').Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                                    assembledInstruction[shamtSection] = int.Parse(splitted[0]);
+                                    assembledInstruction[rs1Section] = int.Parse(splitted[1]);
+                                }
+                                else
+                                    assembledInstruction[rs1Section] = int.Parse(aux[parsedArguments]);
+                                break;
+                            case 'b':
+                                if (aux[parsedArguments].Contains('('))
+                                {
+                                    splitted = aux[parsedArguments].Replace('(', ' ').Replace(')', ' ').Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                                    assembledInstruction[shamtSection] = int.Parse(splitted[0]);
+                                    assembledInstruction[rs2Section] = int.Parse(splitted[1]);
+                                }
+                                else
+                                    assembledInstruction[rs2Section] = int.Parse(aux[parsedArguments]);
+                                break;
+                            case 'i':
+                            case 'I':
+                                assembledInstruction[addressSection] = int.Parse(aux[parsedArguments]);
+                                break;
+                            case 'd':
+                            case 'D':
+                            case 'p':
+                            case 'P':
+                                try
+                                {
+                                    assembledInstruction[addressSection] = int.Parse(aux[parsedArguments]);
+                                }
+                                catch (Exception)
+                                {
+                                    assembledInstruction[addressSection] = labels.ContainsKey(aux[parsedArguments]) ? (int)labels[aux[parsedArguments]] : throw new ArgumentException("Invalid label");
+                                }
+                                break;
+                            default:
+                                throw new NotImplementedException("Instruction argument not implemented. " + arg + " in line: " + instruction);
+                        }
+                        parsedArguments++;
+                    }
+                }
+                MemoryManager.Instance.WriteWord((uint)(assembly.textAddress + instructionsPlaced++), assembledInstruction);
+            }
         }
 
         /// <summary>
@@ -263,16 +391,6 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ID()
         {
-            //R-Type Instruction format.
-            BitVector32.Section funct = BitVector32.CreateSection(64);
-            BitVector32.Section shamt = BitVector32.CreateSection(32, funct);
-            BitVector32.Section rd    = BitVector32.CreateSection(32, shamt);
-            BitVector32.Section rs2   = BitVector32.CreateSection(32, rd);
-            BitVector32.Section rs1   = BitVector32.CreateSection(32, rs2);
-            BitVector32.Section op    = BitVector32.CreateSection(32, rs1);
-            //I-Type Instruction format.
-            BitVector32.Section address = BitVector32.CreateSection(short.MaxValue);
-            // For J-Types we need to create a new bitvector32 and put the op bits to 0 and convert to int32
             
             
         }
