@@ -4,7 +4,6 @@
     {
         public bool busy { get; private set; }
         public bool done { get; private set; }
-        public bool ovf { get; private set; }
         private int cyclesRemaining;
         private double a, b;
         private short operation;
@@ -15,17 +14,31 @@
             done = false;
         }
 
+        /// <summary>
+        /// Load values in the internal FPU register to do the operations.
+        /// </summary>
+        /// <param name="a">Fist operand.</param>
+        /// <param name="b">Second operand.</param>
+        /// <param name="op">Operation to execute.</param>
+        /// <param name="time">Clock cycles duration of operation.</param>
+        /// <exception cref="Exception">If the FPU is already loaded with data and working.</exception>
         public void LoadValues(int a, int b, short op, int time)
         {
-            this.a = a;
-            this.b = b;
-            this.cyclesRemaining = time;
-            this.done = false;
-            this.operation = op;
-            this.busy = true;
-            this.ovf = false;
+            if (!busy)
+            {
+                this.a = a;
+                this.b = b;
+                this.cyclesRemaining = time;
+                this.done = false;
+                this.operation = op;
+            }
+            else
+                throw new Exception("FPU is currently working.");
         }
 
+        /// <summary>
+        /// Ticks 1 clock cycle.
+        /// </summary>
         public void DoTick()
         {
             if (busy)
@@ -39,6 +52,10 @@
             }
         }
 
+        /// <summary>
+        /// Will return the result of the loaded operation when it finishes.
+        /// </summary>
+        /// <returns>The value or null if its not ready.</returns>
         public double? GetValue()
         {
             double? result = null;
@@ -89,7 +106,7 @@
                     result = (a <= b ? 1 : 0);
                     break;
             }
-            return cyclesRemaining == 0 ? result : null;
+            return done ? result : null;
         }
     }
 }
