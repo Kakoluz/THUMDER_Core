@@ -141,8 +141,8 @@ namespace THUMDER.Interpreter
                                                                                                      
             /* Branch PC-relative, 16 bits offset.  */                                               
             new Instruction ( "beqz",     0x10000000,   "a,d"   ),  /* Branch if a == 0              */
-            new Instruction ( "bfpt",     0x18000000,   "a,d"   ),  /* Branch if a == 0              */
-            new Instruction ( "bfpf",     0x1C000000,   "a,d"   ),  /* Branch if a != 0              */
+            new Instruction ( "bfpt",     0x18000000,   "d"     ),  /* Branch if fp status == 0      */
+            new Instruction ( "bfpf",     0x1C000000,   "d"     ),  /* Branch if fp status != 0      */
             new Instruction ( "bnez",     0x14000000,   "a,d"   ),  /* Branch if a != 0              */
                                                                                                      
             /* Jumps Trap and RFE J-TYPE.  */                                                        
