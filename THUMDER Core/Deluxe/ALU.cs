@@ -2,41 +2,59 @@
 {    
     internal class ALU
     {
-        public bool busy { get; private set; }
-        public bool done { get; private set; }
+        public bool Busy { get; private set; }
+        public bool Done { get; private set; }
         private int cyclesRemaining;
         private int a, b;
         private short operation;
 
         public ALU()
         {
-            busy = false;
-            done = false;
+            Busy = false;
+            Done = false;
         }
-        
+
+        /// <summary>
+        /// Load values in the internal ALU register to do the operations.
+        /// </summary>
+        /// <param name="a">Fist operand.</param>
+        /// <param name="b">Second operand.</param>
+        /// <param name="op">Operation to execute.</param>
+        /// <exception cref="Exception">If the ALU is already loaded with data and working.</exception>
         public void LoadValues(int a, int b, short op)
         {
-            this.a = a;
-            this.b = b;
-            this.cyclesRemaining = 1;
-            this.done = false;
-            this.operation = op;
-            this.busy = true;
+            if (!Busy)
+            {
+                this.a = a;
+                this.b = b;
+                this.cyclesRemaining = 1; //All ALU operations are 1 cycle long.
+                this.Done = false;
+                this.operation = op;
+            }
+            else
+                throw new Exception("ALU is currently working.");
         }
-        
+
+        /// <summary>
+        /// Ticks 1 clock cycle.
+        /// </summary>
         public void DoTick()
         {
-            if (busy)
+            if (Busy)
             {
                 cyclesRemaining--;
                 if (cyclesRemaining == 0)
                 {
-                    busy = false;
-                    done = true;
+                    Busy = false;
+                    Done = true;
                 }
             }
         }
 
+        /// <summary>
+        /// Will return the result of the loaded operation when it finishes.
+        /// </summary>
+        /// <returns>The value or null if its not ready.</returns>
         public int? GetValue()
         {
             int? result = null;
@@ -108,7 +126,7 @@
                         result /=  2; //C# does not implement the arithmetic shift so dividing by 2 does the job.
                     break;                  
             }
-            return result;
+            return Done ? result : null;
         }
     }
 }

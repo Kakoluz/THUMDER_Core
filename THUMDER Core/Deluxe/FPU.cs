@@ -2,16 +2,16 @@
 {
     internal class FPU
     {
-        public bool busy { get; private set; }
-        public bool done { get; private set; }
+        public bool Busy { get; private set; }
+        public bool Done { get; private set; }
         private int cyclesRemaining;
         private double a, b;
         private short operation;
 
         public FPU()
         {
-            busy = false;
-            done = false;
+            Busy = false;
+            Done = false;
         }
 
         /// <summary>
@@ -24,12 +24,12 @@
         /// <exception cref="Exception">If the FPU is already loaded with data and working.</exception>
         public void LoadValues(int a, int b, short op, int time)
         {
-            if (!busy)
+            if (!Busy)
             {
                 this.a = a;
                 this.b = b;
                 this.cyclesRemaining = time;
-                this.done = false;
+                this.Done = false;
                 this.operation = op;
             }
             else
@@ -41,13 +41,13 @@
         /// </summary>
         public void DoTick()
         {
-            if (busy)
+            if (Busy)
             {
                 cyclesRemaining--;
                 if (cyclesRemaining == 0)
                 {
-                    busy = false;
-                    done = true;
+                    Busy = false;
+                    Done = true;
                 }
             }
         }
@@ -106,7 +106,7 @@
                     result = (a <= b ? 1 : 0);
                     break;
             }
-            return done ? result : null;
+            return Done ? result : null;
         }
     }
 }
