@@ -44,32 +44,52 @@
             double? result = null;
             switch (operation)
             {
-                case 0x00:
+                case 0: //ADDF
+                case 4: //ADDD
                     result = a + b;
                     break;
-                case 0x01:
+                case 1: //SUBF
+                case 5: //SUBD
                     result = a - b;
                     break;
-                case 0x02:
+                case 14://MULT  integers are operated in the fpu and truncated.
+                case 22://MULTU unsigned are operated in the fpu and truncated.
+                case 2: //MULTF
+                case 6: //MULTD
                     result = a * b;
                     break;
-                case 0x03:
+                case 15://DIV  integers are operated in the fpu and truncated.
+                case 23://DIVU unsigned are operated in the fpu and truncated.
+                case 3: //DIVF
+                case 7: //DIVD
                     result = a / b;
                     break;
-                case 0x04:
-                    result = -a;
+                case 19: //GTF
+                case 27: //GTD
+                    result = (a > b ? 1 : 0);
                     break;
-                case 0x05:
-                    result = Math.Abs(a);
+                case 16: //EQF
+                case 24: //EQD
+                    result = (a == b ? 1 : 0);
                     break;
-                case 0x06:
-                    result = Math.Sqrt(a);
+                case 21: //GEF
+                case 29: //GED
+                    result = (a >= b ? 1 : 0);
                     break;
-                case 0x07:
-                    result = a % b;
+                case 18: //LTF
+                case 26: //LTD
+                    result = (a < b ? 1 : 0);
+                    break;
+                case 17: //NEF
+                case 25: //NED
+                    result = (a != b ? 1 : 0);
+                    break;
+                case 20: //LEF
+                case 28: //LED
+                    result = (a <= b ? 1 : 0);
                     break;
             }
-            return result;
+            return cyclesRemaining == 0 ? result : null;
         }
     }
 }
