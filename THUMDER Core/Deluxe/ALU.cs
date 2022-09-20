@@ -4,7 +4,6 @@
     {
         public bool busy { get; private set; }
         public bool done { get; private set; }
-        public bool ovf { get; private set; }
         private int cyclesRemaining;
         private int a, b;
         private short operation;
@@ -23,7 +22,6 @@
             this.done = false;
             this.operation = op;
             this.busy = true;
-            this.ovf = false;
         }
         
         public void DoTick()
@@ -42,91 +40,71 @@
         public int? GetValue()
         {
             int? result = null;
-            int foo;
             switch (operation)
             {
                 //Arithmetic Logical Operations
-                case 0x08:                   
-                case 0x20:
-                    result = a + b;
-                    try
-                    {
-                        foo = checked(a + b);
-                    }
-                    catch (OverflowException)
-                    {
-                        ovf = true;
-                    }
-                    break;
-                case 0x09:
-                case 0x21:
+                case 8:  //ADDI
+                case 9:  //ADDUI
+                case 32: //ADD
+                case 33: //ADDU
                     result = a + b;
                     break;
-                case 0x0A:
-                case 0x22:
-                    result = a - b;
-                    try
-                    {
-                        foo = checked(a - b);
-                    }
-                    catch (OverflowException)
-                    {
-                        ovf = true;
-                    }
-                    break;
-                case 0x0B:
-                case 0x23:
+                case 10: //SUBI
+                case 11: //SUBUI
+                case 34: //SUB
+                case 35: //SUBU
                     result = a - b;
                     break;
-                case 0x0C:
-                case 0x24:
+                case 12: //ANDI
+                case 36: //AND
                     result = a & b;
                     break;
-                case 0x0D:
-                case 0x25:
+                case 13: //ORI
+                case 37: //OR
                     result = a | b;
                     break;
-                case 0x0E:
-                case 0x26:
+                case 14: //XORI
+                case 38: //XOR
                     result = a ^ b;
                     break;
-                case 0x0F:
-                case 0x27:
-                    //TODO
-                    break;
                 //Test Set Operations.
-                case 0x18:
-                case 0x28:
-                    result = 0;
-                    break;
-                case 0x19:
-                case 0x29:
+                case 27: //SGTI
+                case 43: //SGT
                     result = (a > b ? 1 : 0);
                     break;
-                case 0x1A:
-                case 0x2A:
+                case 24: //SEQI
+                case 40: //SEQ
                     result = (a == b ? 1 : 0);
                     break;
-                case 0x1B:
-                case 0x2B:
+                case 29: //SGEI
+                case 45: //SGE
                     result = (a >= b ? 1 : 0);
                     break;
-                case 0x1C:
-                case 0x2C:
+                case 26: //SLTI
+                case 42: //SLT
                     result = (a < b ? 1 : 0);
                     break;
-                case 0x1D:
-                case 0x2D:
+                case 25: //SNEI
+                case 41: //SNE
                     result = (a != b ? 1 : 0);
                     break;
-                case 0x1E:
-                case 0x2E:
+                case 28: //SLEI
+                case 44: //SLE
                     result = (a <= b ? 1 : 0);
                     break;
-                case 0x1F:
-                case 0x2F:
-                    result = 1;
+                //Bit shift operations.
+                case 20: //SLLI
+                case 4:  //SLL
+                    result = a << b;
                     break;
+                case 22: //SRLI
+                case 6:  //SRL
+                    result = a >> b;
+                    break;
+                case 23: //SRAI
+                case 7:  //SRA
+                    //TODO
+                    break;                  
             }
             return result;
         }
