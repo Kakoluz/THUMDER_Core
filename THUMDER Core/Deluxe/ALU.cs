@@ -103,7 +103,9 @@
                     break;
                 case 23: //SRAI
                 case 7:  //SRA
-                    //TODO
+                    result = a;
+                    for (int i = 0; i < b; i++)
+                        result /=  2; //C# does not implement the arithmetic shift so dividing by 2 does the job.
                     break;                  
             }
             return result;
