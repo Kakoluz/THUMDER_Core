@@ -98,6 +98,28 @@ namespace THUMDER.Deluxe
         }
 
         /// <summary>
+        /// Writes a Half Word to memory.
+        /// </summary>
+        /// <param name="Address">The address to write.</param>
+        /// <param name="Data">Data to write in the memory.</param>
+        public void WriteHalf(in uint Address, in short Data)
+        {
+            byte[] aux = BitConverter.GetBytes(Data);
+            memory[Address] = aux[0];
+            memory[Address + 1] = aux[1];
+        }
+
+        /// <summary>
+        /// Access the memory and returns the specified memory address.
+        /// </summary>
+        /// <param name="Address">The address of the memory to read.</param>
+        /// <returns>A word starting in the specified address.</returns>
+        public int ReadHalf(in uint Address)
+        {
+            return BitConverter.ToInt32(memory, (int)Address);
+        }
+
+        /// <summary>
         /// Writes a Float to memory.
         /// </summary>
         /// <param name="Address">The address to write.</param>
