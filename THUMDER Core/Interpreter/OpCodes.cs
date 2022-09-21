@@ -149,7 +149,7 @@ namespace THUMDER.Interpreter
             new Instruction ( "j",        0x08000000,   "D"     ),  /* Jump, PC-relative 26 bits     */
             new Instruction ( "jal",      0x0C000000,   "D"     ),  /* JAL, PC-relative 26 bits      */
             new Instruction ( "trap" ,    0x44000000,   "D"     ),  /* TRAP to OS                    */
-            new Instruction ( "rfe",      0x40000000,   ""      ),  /* Return From Exception         */
+          //new Instruction ( "rfe",      0x40000000,   ""      ),  /* Return From Exception         */
             new Instruction ( "call",     0x08000000,   "D"     ),  /* Jump, PC-relative 26 bits     */
                                                                                                      
             /* Jumps Trap and RFE I-TYPE.  */                                                        
