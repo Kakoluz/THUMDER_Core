@@ -6,6 +6,7 @@
         public bool Done { get; private set; }
         private int cyclesRemaining;
         private double a, b;
+        private int c;
         private short operation;
 
         public FPU()
@@ -22,15 +23,17 @@
         /// <param name="op">Operation to execute.</param>
         /// <param name="time">Clock cycles duration of operation.</param>
         /// <exception cref="Exception">If the FPU is already loaded with data and working.</exception>
-        public void LoadValues(int a, int b, short op, int time)
+        public void LoadValues(int c, double a, double b, int op, int time)
         {
             if (!Busy)
             {
+                this.c = c;
                 this.a = a;
                 this.b = b;
                 this.cyclesRemaining = time;
                 this.Done = false;
-                this.operation = op;
+                this.operation = (short)op;
+                this.Busy = true;
             }
             else
                 throw new Exception("FPU is currently working.");
@@ -53,32 +56,48 @@
         }
 
         /// <summary>
-        /// Will return the result of the loaded operation when it finishes.
+        /// Will return the result of the loaded operation if its finished.
         /// </summary>
-        /// <returns>The value or null if its not ready.</returns>
-        public double? GetValue()
+        /// <param name="dest">Register to store the result.</param>
+        /// <param name="isDouble">Is the value a double?</param>
+        /// <returns>The operated value or null if its not ready</returns>
+        public double? GetValue(out int dest, out bool isDouble)
         {
             double? result = null;
+            isDouble = false;
+            dest = c;
             switch (operation)
             {
                 case 0: //ADDF
+                    result = a + b;
+                    break;
                 case 4: //ADDD
+                    isDouble = true;
                     result = a + b;
                     break;
                 case 1: //SUBF
+                    result = a - b;
+                    break;
                 case 5: //SUBD
+                    isDouble = true;
                     result = a - b;
                     break;
                 case 14://MULT  integers are operated in the fpu and truncated.
                 case 22://MULTU unsigned are operated in the fpu and truncated.
                 case 2: //MULTF
+                    result = a / b;
+                    break;
                 case 6: //MULTD
+                    isDouble = true;
                     result = a * b;
                     break;
                 case 15://DIV  integers are operated in the fpu and truncated.
                 case 23://DIVU unsigned are operated in the fpu and truncated.
                 case 3: //DIVF
+                    result = a / b;
+                    break;
                 case 7: //DIVD
+                    isDouble = true;
                     result = a / b;
                     break;
                 case 19: //GTF
@@ -106,7 +125,9 @@
                     result = (a <= b ? 1 : 0);
                     break;
             }
-            return Done ? result : null;
+            bool returnVal = Done;
+            Done = false;
+            return returnVal ? result : null;
         }
     }
 }

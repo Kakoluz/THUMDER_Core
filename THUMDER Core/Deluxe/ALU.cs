@@ -5,7 +5,7 @@
         public bool Busy { get; private set; }
         public bool Done { get; private set; }
         private int cyclesRemaining;
-        private int a, b;
+        private int a, b, c;
         private short operation;
 
         public ALU()
@@ -21,15 +21,17 @@
         /// <param name="b">Second operand.</param>
         /// <param name="op">Operation to execute.</param>
         /// <exception cref="Exception">If the ALU is already loaded with data and working.</exception>
-        public void LoadValues(int a, int b, short op)
+        public void LoadValues(int c, int a, int b, int op)
         {
             if (!Busy)
             {
+                this.c = c;
                 this.a = a;
                 this.b = b;
                 this.cyclesRemaining = 1; //All ALU operations are 1 cycle long.
                 this.Done = false;
-                this.operation = op;
+                this.operation = (short)op;
+                this.Busy = true;
             }
             else
                 throw new Exception("ALU is currently working.");
@@ -55,8 +57,9 @@
         /// Will return the result of the loaded operation when it finishes.
         /// </summary>
         /// <returns>The value or null if its not ready.</returns>
-        public int? GetValue()
+        public int? GetValue(out int dest)
         {
+            dest = c;
             int? result = null;
             switch (operation)
             {
@@ -126,7 +129,9 @@
                         result /=  2; //C# does not implement the arithmetic shift so dividing by 2 does the job.
                     break;                  
             }
-            return Done ? result : null;
+            bool returnVal = Done;
+            Done = false;
+            return returnVal ? result : null;
         }
     }
 }
