@@ -151,17 +151,12 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Special Register to store data fetched.
         /// </summary>
-        private BitVector32 IDRegister;
+        private BitVector32 IR;
 
         /// <summary>
         /// Instruction in each execution stage.
         /// </summary>
         private Queue<uint> PipelinedInstructions;
-
-        /// <summary>
-        /// Index of the last instruction to exit WB stage.
-        /// </summary>
-        private uint lastInstruction;
 
         /// <summary>
         /// Current Instruction in human legible format.
@@ -189,19 +184,14 @@ namespace THUMDER.Deluxe
         public ulong Cycles { get; private set; }
 
         /// <summary>
-        /// Lists of pending memory writes.
+        /// Lists of pending memory accesses.
         /// </summary>
-        private List<KeyValuePair<int, byte[]>> PedingMemWrites = new List<KeyValuePair<int, byte[]>>();
+        private List<MemAccess?> PedingMemAccess = new List<MemAccess?>();
 
         /// <summary>
-        /// List of pending register writebacks.
+        /// A list that holds if a registers is being written by an instruction.
         /// </summary>
-        private List<KeyValuePair<int, BitVector32>> PedingWB = new List<KeyValuePair<int, BitVector32>>();
-
-        /// <summary>
-        /// List of pending floating point writebacks.
-        /// </summary>
-        private List<KeyValuePair<int, byte[]>> PedingfpWB = new List<KeyValuePair<int, byte[]>>();
+        private byte[] UsedRegisters = new byte[32];
 
         /// <summary>
         /// Instruction name extracted from memory.
@@ -215,7 +205,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Stages of execution where the CPU might need to wait.
         /// </summary>
-        private bool IDhold, MEMHold, WBHold, ForwadingHold, EXHold;
+        private bool IDstall, WBstall, ALUStall, MULTStall, DIVStall, ADDFStall, IDStall;
 
         /// <summary>
         /// Controls the stopping of the emulation.
@@ -236,7 +226,7 @@ namespace THUMDER.Deluxe
             
             this.PipelinedInstructions = new Queue<uint>(5);
 
-            this.PedingMemWrites = new List<KeyValuePair<int, byte[]>>();
+            this.PedingMemAccess = new List<MemAccess?>();
             this.PedingWB = new List<KeyValuePair<int, BitVector32>>();
             this.PedingfpWB = new List<KeyValuePair<int, byte[]>>();
 
@@ -431,18 +421,18 @@ namespace THUMDER.Deluxe
         {
             while (!Instance.trap0Found || Instance.PC > Memsize)
             {
-                Instance.Step();
-                ++Instance.Cycles;
+                Instance.DoCycle();
             }
         }
 
-        private void Step()
+        private void DoCycle()
         {
-            this.IF();
-            this.ID();
-            this.EX();
-            this.MEM();
-            this.WB();
+            this.IF();  //Memory access is the first step. but won't happen if there are peding operations to memory WHICH SHOULD ONLY HAPPEN IF THERE IS A INSTRUCTION REQUESTING IT.
+            this.WB();  //We write to registers in the first half of the cycle.
+            this.ID();  //We read from registers in the second half to avoid data issues.
+            this.EX();  //Apply a cycle to all execution units and place results, if available on the output register.
+            this.MEM(); //Access the memory if needed.
+            ++Cycles;
         }
 
         /// <summary>
@@ -488,10 +478,12 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void IF()
         {
-            IDRegister = MemoryManager.Instance.ReadWordAsBitVector(PC);
-            PC += 4;
-            PipelinedInstructions.Enqueue(PC);
-            PipelinedInstructions.Dequeue();
+            if (PedingMemAccess[0] != null || !IDStall)
+            {
+                IR = MemoryManager.Instance.ReadWordAsBitVector(PC);
+                PC += 4;
+                PipelinedInstructions.Enqueue(PC);
+            }
         }
 
         /// <summary>
@@ -499,34 +491,39 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ID()
         {
-            this.IDOpcode = IDRegister[opSection];
-            if (this.IDOpcode == 0 || this.IDOpcode == 1)
+            if (!IDStall)
             {
-                this.funct = IDRegister[functSection];
-                this.shamt = IDRegister[shamtSection];
-                this.rd    = IDRegister[rdSection];
-                this.rs2   = IDRegister[rs2Section];
-                this.rs1   = IDRegister[rs1Section];
-            }
-            else
-            {
-                switch (IDOpcode)
+                this.IDOpcode = IR[opSection];
+                if (this.IDOpcode == 0 || this.IDOpcode == 1)
                 {
-                    case 2:
-                    case 3:
-                    case 10:
-                    case 11:
-                        IDRegister[opSection] = 0;              // Since BitVector32 Sections only support up to 16bits, we need to place the upper 6 bits to 0
-                        address = IDRegister.Data;              // then we can use the whole 32 bits as the address value and 
-                        IDRegister[opSection] = (int)IDOpcode;  // then we can place the opcode back into the instruction.
-                        break;
-                    default:
-                        this.address = IDRegister[addressSection];
-                        this.rs2     = IDRegister[rs2Section];
-                        this.rs1     = IDRegister[rs1Section];
-                        break;
+                    this.funct = IR[functSection];
+                    this.shamt = IR[shamtSection];
+                    this.rd = IR[rdSection];
+                    this.rs2 = IR[rs2Section];
+                    this.rs1 = IR[rs1Section];
+                }
+                else
+                {
+                    switch (IDOpcode)
+                    {
+                        case 2:
+                        case 3:
+                        case 10:
+                        case 11:
+                            IR[opSection] = 0;              // Since BitVector32 Sections only support up to 16bits, we need to place the upper 6 bits to 0
+                            address = IR.Data;              // then we can use the whole 32 bits as the address value and 
+                            IR[opSection] = (int)IDOpcode;  // then we can place the opcode back into the instruction.
+                            break;
+                        default:
+                            this.address = IR[addressSection];
+                            this.rs2 = IR[rs2Section];
+                            this.rs1 = IR[rs1Section];
+                            break;
+                    }
                 }
             }
+            PedingMemAccess.Add(null);
+            IDstall = !this.LoadInstruction();
         }
 
         /// <summary>
@@ -534,7 +531,6 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void EX()
         {
-            EXHold = this.LoadInstruction();
             this.TickAllUnits();
             this.UnloadUnits();
         }
@@ -544,16 +540,47 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void MEM()
         {
-            if (PedingMemWrites.Count > 0)
+            if (PedingMemAccess[0] != null)
             {
-                var wb = PedingMemWrites[0];
-                PedingMemWrites.RemoveAt(0);
-                uint address = (uint)wb.Key;
-                foreach (byte b in wb.Value)
+                MemAccess wb = (MemAccess)PedingMemAccess[0];
+                uint address = wb.Address;
+                if (wb.isWrite)
                 {
-                    MemoryManager.Instance.WriteByte(address++, b);
+                    foreach (byte b in wb.Content)
+                    {
+                        MemoryManager.Instance.WriteByte(address++, b);
+                    }
+                }
+                else
+                {
+                    switch (wb.Type.Value)
+                    {
+                        case "BYTE":
+                            Registers[(int)wb.Destination] = new BitVector32((sbyte)MemoryManager.Instance.ReadByte(wb.Address));
+                            break;
+                        case "UBYTE":
+                            Registers[(int)wb.Destination] = new BitVector32(MemoryManager.Instance.ReadByte(wb.Address));
+                            break;
+                        case "HALF":
+                        case "UHALF":
+                            Registers[(int)wb.Destination] = new BitVector32(MemoryManager.Instance.ReadHalf((wb.Address)));
+                            break;
+                        case "UWORD":
+                        case "WORD":
+                            Registers[(int)wb.Destination] = new BitVector32(MemoryManager.Instance.ReadWordAsBitVector(wb.Address));
+                            break;
+                        case "FLOAT":
+                            fRegisters[(int)wb.Destination] = new BitVector32(MemoryManager.Instance.ReadFloatAsBitVector(wb.Address));
+                            break;
+                        case "DOUBLE":
+                            byte[] value = BitConverter.GetBytes(MemoryManager.Instance.ReadDouble(wb.Address));
+                            fRegisters[(int)wb.Destination] = new BitVector32(BitConverter.ToInt32(value, 0));
+                            fRegisters[(int)wb.Destination + 1] = new BitVector32(BitConverter.ToInt32(value, 4));
+                            break;
+                    }
                 }
             }
+            PedingMemAccess.RemoveAt(0);
         }
 
         /// <summary>
@@ -564,16 +591,18 @@ namespace THUMDER.Deluxe
             if (ALUout.Value != null)
             {
                 Registers[(int)ALUout.Value] = ALUout.Key;
+                UsedRegisters[(int)ALUout.Value] = 0;
                 ALUout = new KeyValuePair<BitVector32, uint?>(zeroBits, null);
             }
-            if (FPUout.Value != null)
+            else if (FPUout.Value != null)
             {
                 fRegisters[(int)FPUout.Value] = FPUout.Key[0];
+                UsedRegisters[(int)FPUout.Value] = 0;
                 if (fpuDouble)
                     fRegisters[(int)FPUout.Value + 1] = FPUout.Key[1];
                 FPUout = new KeyValuePair<BitVector32[], uint?>(zeroBitsDouble, null);
             }
-            PipelinedInstructions.TryDequeue(out lastInstruction); //Dequeue the instruction that finished.
+            PipelinedInstructions.Dequeue(); //Dequeue the instruction that finished.
         }
 
         private void UnloadUnits()
@@ -588,6 +617,7 @@ namespace THUMDER.Deluxe
                     {
                         ALUout = new KeyValuePair<BitVector32, uint?>(new BitVector32((int)output), (uint)dest);
                     }
+                    ALUStall = false;
                     break; //Unload only 1 unit per cycle.
                 }
             }
@@ -607,6 +637,7 @@ namespace THUMDER.Deluxe
                         FPUout = new KeyValuePair<BitVector32[], uint?>(aux, (uint)dest);
                         fpuDone = true;
                     }
+                    ADDFStall = false;
                     break; //Unload only 1 unit per cycle.
                 }
             }
@@ -627,6 +658,7 @@ namespace THUMDER.Deluxe
                         FPUout = new KeyValuePair<BitVector32[], uint?>(aux, (uint)dest);
                         fpuDone = true;
                     }
+                    MULTStall = false;
                     break; //Unload only 1 unit per cycle.
                 }
             }
@@ -646,6 +678,7 @@ namespace THUMDER.Deluxe
                         aux[1] = new BitVector32(BitConverter.ToInt32(outBytes, 4));
                         FPUout = new KeyValuePair<BitVector32[], uint?>(aux, (uint)dest);
                     }
+                    DIVStall = false;
                     break; //Unload only 1 unit per cycle.
                 }
             }
@@ -669,39 +702,73 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Loads the instruction into an EX unit.
         /// </summary>
-        /// <returns>If was correctly loaded</returns>
+        /// <returns>If the instruction was corretly loaded.</returns>
         private bool LoadInstruction()
         {
             bool success = true;
+
+            BitVector32 A = new BitVector32(Registers[rs1]);
+            BitVector32[] Afp = new BitVector32[2];
+            BitVector32 B = new BitVector32(Registers[rs2]);
+            BitVector32[] Bfp = new BitVector32[2];
+            Afp[0] = new BitVector32(fRegisters[rs1]);
+            Afp[1] = new BitVector32(fRegisters[rs1 + 1]);
+            Bfp[0] = new BitVector32(fRegisters[rs2]);
+            Bfp[1] = new BitVector32(fRegisters[rs2 + 1]);
+
+            BitVector32[] arr = new BitVector32[2]; //Aux vector
             List<byte> aux = new List<byte>();
+            if (UsedRegisters[rs1] != 0 || UsedRegisters[rs2] != 0) //Check if any of the registers need a data being calculated.
+            {
+                if (Forwarding) //Check if data forwarding is enabled and look for the data.
+                {
+                    if (ALUout.Value == rs1)
+                        A = ALUout.Key;
+                    else if (ALUout.Value == rs2)
+                        B = ALUout.Key;
+                    else if (FPUout.Value == rs1)
+                        Afp = FPUout.Key;
+                    else if (FPUout.Value == rs2)
+                        Bfp = FPUout.Key;
+                    else
+                        return false; //Wait as the data is not ready yet.
+                }
+                else
+                    return false; //Failed to load instruction due to possible data error.
+            }
+            UsedRegisters[rd] = 1;
             switch (IDOpcode)
             {
                 case 1:
                     switch (funct)
                     {
                         case 8: //CVTF2D
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes((double)fRegisters[rs1].Data)));
+                            arr[0] =new BitVector32(fRegisters[rs1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 9: //CVTF2I
-                            this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rd, new BitVector32(fRegisters[rs1])));
+                            this.ALUout = new KeyValuePair<BitVector32, uint?>(new BitVector32(fRegisters[rs1]), (uint)rd);
                             break;
                         case 10: //CVTD2F
                             aux.Clear();
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes((float)BitConverter.ToDouble(aux.ToArray()))));
+                            arr[0] = new BitVector32(BitConverter.ToInt32(aux.ToArray(), 0));
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 11: //CVTD2I
                             aux.Clear();
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes((int)BitConverter.ToDouble(aux.ToArray()))));
+                            this.ALUout = new KeyValuePair<BitVector32, uint?>(new BitVector32(BitConverter.ToInt32(aux.ToArray())), (uint)rd);
                             break;
                         case 12: //CVTI2F
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes(Registers[rs1].Data)));
+                            arr[0] = new BitVector32(Registers[rs1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 13: //CVTI2D
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes((double)Registers[rs1].Data)));
+                            arr[0] = new BitVector32(fRegisters[rs1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 0: //ADDF
                         case 1: //SUBF
@@ -713,16 +780,19 @@ namespace THUMDER.Deluxe
                                     break;
                                 }
                                 if (adds.Last() == fpu)
+                                {
+                                    ADDFStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 4: //ADDD
                         case 5: //SUBD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2 + 1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
                             foreach (FPU fpu in adds)
                             {
                                 if (!fpu.Busy)
@@ -732,7 +802,10 @@ namespace THUMDER.Deluxe
                                     break;
                                 }
                                 if (adds.Last() == fpu)
+                                { 
+                                    ADDFStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 2: //MULTF
@@ -740,11 +813,14 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(fRegisters[rs1].Data), BitConverter.Int32BitsToSingle(fRegisters[rs2].Data), funct, MULDDelay);
+                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), funct, MULDDelay);
                                     break;
                                 }
                                 if (muls.Last() == fpu)
+                                { 
+                                    MULTStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 3: //DIVF
@@ -752,19 +828,22 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(fRegisters[rs1].Data), BitConverter.Int32BitsToSingle(fRegisters[rs2].Data), funct, DIVDelay);
+                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), funct, DIVDelay);
                                     break;
                                 }
                                 if (divs.Last() == fpu)
+                                { 
+                                    DIVStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 6: //MULTD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2 + 1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
                             foreach (FPU fpu in muls)
                             {
                                 if (!fpu.Busy)
@@ -774,15 +853,18 @@ namespace THUMDER.Deluxe
                                     break;
                                 }
                                 if (muls.Last() == fpu)
+                                {
+                                    MULTStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 7: //DIVD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2 + 1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
                             foreach (FPU fpu in divs)
                             {
                                 if (!fpu.Busy)
@@ -792,7 +874,10 @@ namespace THUMDER.Deluxe
                                     break;
                                 }
                                 if (divs.Last() == fpu)
+                                { 
+                                    DIVStall = true; 
                                     success = false;
+                                }
                             }
                             break;
                         case 14: //MULT
@@ -801,11 +886,14 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Registers[rs1].Data), BitConverter.Int32BitsToSingle(Registers[rs2].Data), funct, MULDDelay);
+                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), funct, MULDDelay);
                                     break;
                                 }
                                 if (muls.Last() == fpu)
+                                { 
+                                    MULTStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 15: //DIV
@@ -814,11 +902,14 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Registers[rs1].Data), BitConverter.Int32BitsToSingle(Registers[rs2].Data), funct, DIVDelay);
+                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), funct, DIVDelay);
                                     break;
                                 }
                                 if (divs.Last() == fpu)
+                                { 
+                                    DIVStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         case 16: //LOGIC OPERATIONS FLOATS
@@ -831,19 +922,22 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(fRegisters[rs1].Data), BitConverter.Int32BitsToSingle(fRegisters[rs2].Data), funct, 1);
+                                    fpu.LoadValues(rd, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), funct, 1);
                                     break;
                                 }
                                 if (adds.Last() == fpu)
+                                { 
+                                    ADDFStall = true;
                                     success = false;
+                                }
                             }
                             break;
                         default: //LOGIC OPERATIONS DOUBLES
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs2 + 1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
                             foreach (FPU fpu in adds)
                             {
                                 if (!fpu.Busy)
@@ -853,7 +947,10 @@ namespace THUMDER.Deluxe
                                     break;
                                 }
                                 if (adds.Last() == fpu)
+                                { 
+                                    ADDFStall = true;
                                     success = false;
+                                }
                             }
                             break;
 
@@ -869,30 +966,34 @@ namespace THUMDER.Deluxe
                             //UNIMPLEMENTED
                             break;
                         case 50: //MOVF
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes(fRegisters[rs1].Data)));
+                            arr[0] = new BitVector32(fRegisters[rs1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 51: //MOVD
-                            aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                            aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, aux.ToArray()));
+                            arr[0] = new BitVector32(fRegisters[rs1]);
+                            arr[1] = new BitVector32(fRegisters[rs1+1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         case 52: //MOVFP2I
-                            this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rd, new BitVector32(fRegisters[rs1])));
+                            this.ALUout = new KeyValuePair<BitVector32, uint?>(new BitVector32(fRegisters[rs1]), (uint)rd);
                             break;
                         case 53: //MOVI2FP
-                            this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rd, BitConverter.GetBytes(Registers[rs1].Data)));
+                            arr[0] = new BitVector32(Registers[rs1]);
+                            this.FPUout = new KeyValuePair<BitVector32[], uint?>(arr, (uint)rd);
                             break;
                         default: //ALU OPERATIONS
                             foreach (ALU alu in alus)
                             {
                                 if (!alu.Busy)
                                 {
-                                    alu.LoadValues(rd, Registers[rs1].Data, Registers[rs2].Data, funct);
+                                    alu.LoadValues(rd, A.Data, B.Data, funct);
                                     break;
                                 }
                                 if (alus.Last() == alu)
+                                { 
+                                    ALUStall = true;
                                     success = false;
+                                }
                             }
                             break;
                     }
@@ -925,43 +1026,89 @@ namespace THUMDER.Deluxe
                         trap0Found = true;
                     break;
                 case 32:
-                    this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rs2 + address, new BitVector32((sbyte)MemoryManager.Instance.ReadByte((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.BYTE);
                     break;
                 case 33:
-                    this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rs2 + address, new BitVector32(MemoryManager.Instance.ReadHalf((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.HALF);
                     break;
                 case 35:
-                    this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rs2 + address, MemoryManager.Instance.ReadWordAsBitVector((uint)rs1)));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.WORD);
                     break;
                 case 36:
-                    this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rs2 + address, new BitVector32(MemoryManager.Instance.ReadByte((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.UBYTE);
                     break;
                 case 37:
-                    this.PedingWB.Add(new KeyValuePair<int, BitVector32>(rs2 + address, new BitVector32((ushort)MemoryManager.Instance.ReadHalf((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.UHALF);
                     break;
                 case 38:
-                    this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rs2 + address, BitConverter.GetBytes(MemoryManager.Instance.ReadFloat((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.FLOAT);
                     break;
                 case 39:
-                    this.PedingfpWB.Add(new KeyValuePair<int, byte[]>(rs2 + address, BitConverter.GetBytes(MemoryManager.Instance.ReadDouble((uint)rs1))));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess(rs2, (uint)(rs1 + address), MemAccessTypes.DOUBLE);
                     break;
                 case 40:
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess((uint)(rs2 + address), BitConverter.GetBytes(Registers[rs1].Data), MemAccessTypes.BYTE);
+                    break;
                 case 41:
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess((uint)(rs2 + address), BitConverter.GetBytes(Registers[rs1].Data), MemAccessTypes.HALF);
+                    break;
                 case 43:
-                    this.PedingMemWrites.Add(new KeyValuePair<int, byte[]>(rs2 + address, BitConverter.GetBytes(Registers[rs1].Data)));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess((uint)(rs2 + address), BitConverter.GetBytes(Registers[rs1].Data), MemAccessTypes.WORD);
                     break;
                 case 46:
-                    this.PedingMemWrites.Add(new KeyValuePair<int, byte[]>(rs2 + address, BitConverter.GetBytes(fRegisters[rs1].Data)));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess((uint)(rs2 + address), BitConverter.GetBytes(fRegisters[rs1].Data), MemAccessTypes.FLOAT);
                     break;
                 case 47:
                     aux.Clear();
-                    aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
-                    aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                    this.PedingMemWrites.Add(new KeyValuePair<int, byte[]>(rs2 + address, aux.ToArray()));
+                    aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
+                    aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
+                    this.PedingMemAccess[PedingMemAccess.Count] = new MemAccess((uint)(rs2 + address), aux.ToArray(), MemAccessTypes.DOUBLE);
                     break;
-
             }
             return success;
+        }
+
+        struct MemAccess
+        {
+            public int? Destination { get; private set; }
+            public uint Address { get; private set; }
+            public byte[]? Content { get; private set; }
+            public MemAccessTypes Type { get; private set; }
+            public bool isWrite { get; private set; }
+
+            public MemAccess(uint address, byte[] content, MemAccessTypes type)
+            {
+                Destination = null;
+                Address = address;
+                Content = content;
+                Type = type;
+                isWrite = true;
+            }
+            public MemAccess(int destination, uint address, MemAccessTypes type)
+            {
+                Destination = destination;
+                Address = address;
+                Content = null;
+                Type = type;
+                isWrite = false;
+            }
+        }
+        internal struct MemAccessTypes
+        {
+            public static readonly MemAccessTypes BYTE = new("BYTE");
+            public static readonly MemAccessTypes UBYTE = new("UBYTE");
+            public static readonly MemAccessTypes WORD = new("WORD");
+            public static readonly MemAccessTypes UWORD = new("UWORD");
+            public static readonly MemAccessTypes FLOAT = new("FLOAT");
+            public static readonly MemAccessTypes DOUBLE = new("DOUBLE");
+            public static readonly MemAccessTypes HALF = new("HALF");
+            public static readonly MemAccessTypes UHALF = new("UHALF");
+
+            public string Value { get; private set; }
+            private MemAccessTypes (string value)
+            {
+                Value = value;
+            }
         }
     }
 }
