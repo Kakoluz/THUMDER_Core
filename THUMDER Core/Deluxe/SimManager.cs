@@ -227,8 +227,6 @@ namespace THUMDER.Deluxe
             this.PipelinedInstructions = new Queue<uint>(5);
 
             this.PedingMemAccess = new List<MemAccess?>();
-            this.PedingWB = new List<KeyValuePair<int, BitVector32>>();
-            this.PedingfpWB = new List<KeyValuePair<int, byte[]>>();
 
             for (int i = 0; i < ADDUnits; i++)
                 this.adds.Add(new FPU());
