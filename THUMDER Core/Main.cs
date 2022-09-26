@@ -1,37 +1,62 @@
-﻿using THUMDER.Interpreter;
+﻿using System;
+using System.Security.Cryptography.X509Certificates;
+using THUMDER.Deluxe;
+using THUMDER.Interpreter;
 
 namespace THUMDER
 { 
     public static class THUMDER
     {
+        /// <summary>
+        /// Contains the help command info.
+        /// </summary>
+        /// <param name="version">The program version to print.</param>
+        static void PrintHelp(string version)
+        {
+            Console.WriteLine("THUMDER Core " + version);
+            Console.WriteLine("");
+            Console.WriteLine("Usage: THUMDER [options] [file]");
+            Console.WriteLine("");
+            Console.WriteLine("Options:");
+            Console.WriteLine("  -h --help                          Show this help message and exit");
+            Console.WriteLine("  -S --server                        Launch as a network server");
+            Console.WriteLine("  -v --version                       Show version information and exit");
+        }
+
+        /// <summary>
+        /// Contains the legal and version of the program.
+        /// </summary>
+        /// <param name="version">The program version to print.</param>
+        static void PrintVersion(string version)
+        {
+            Console.WriteLine("THUMDER Core " + version);
+            Console.WriteLine("Copyright © 2022 Alberto Rodríguez Torres");
+            Console.WriteLine("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.");
+            Console.WriteLine("This is free software: you are free to change and redistribute it.");
+            Console.WriteLine("There is NO WARRANTY, to the extent permitted by law.");
+        }
+
+        /// <summary>
+        /// Contains the programs entry point.
+        /// </summary>
+        /// <param name="args"></param>
         static void Main(string[] args)
         {
             Console.Title = "THUMDER Core";
             string version = System.Reflection.Assembly.GetExecutingAssembly()
-                                                       .GetName().Version
-                                                       .ToString();
+                                                        .GetName().Version
+                                                        .ToString();
             if (args.Length > 0)
             {
                 switch(args[0])
                 {
                     case "-h":
                     case "--help":
-                        Console.WriteLine("THUMDER Core " + version);
-                        Console.WriteLine("");
-                        Console.WriteLine("Usage: THUMDER [options] [file]");
-                        Console.WriteLine("");
-                        Console.WriteLine("Options:");
-                        Console.WriteLine("  -h --help                          Show this help message and exit");
-                        Console.WriteLine("  -S --server                        Launch as a network server");
-                        Console.WriteLine("  -v --version                       Show version information and exit");
+                        PrintHelp(version);
                         break;
                     case "-v":
                     case "--version":
-                        Console.WriteLine("THUMDER Core " + version);
-                        Console.WriteLine("Copyright © 2022 Alberto Rodríguez Torres");
-                        Console.WriteLine("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.");
-                        Console.WriteLine("This is free software: you are free to change and redistribute it.");
-                        Console.WriteLine("There is NO WARRANTY, to the extent permitted by law.");
+                        PrintVersion(version);
                         break;
                     case "-S":
                     case "-s":
@@ -54,15 +79,7 @@ namespace THUMDER
             }
             else
             {
-                Console.WriteLine("Invalid argument.");
-                Console.WriteLine("THUMDER Core " + version);
-                Console.WriteLine("");
-                Console.WriteLine("Usage: THUMDER [options] [file]");
-                Console.WriteLine("");
-                Console.WriteLine("Options:");
-                Console.WriteLine("  -h --help                          Show this help message and exit");
-                Console.WriteLine("  -S --server                        Launch as a network server");
-                Console.WriteLine("  -v --version                       Show version information and exit");
+                PrintHelp(version);
             }
             return;
         }
@@ -78,6 +95,14 @@ namespace THUMDER
             {
                 string[] file = File.ReadAllLines(PathToFile);
                 ASM assembly = Assembler.Decode(file);
+                SimManager.LoadProgram(assembly);
+                Console.WriteLine("Loaded program " + Path.GetFileName(PathToFile));
+                Console.WriteLine("Press any key to start execution.");
+                Console.Read();
+                SimManager.RunFullSimulation();
+                Console.WriteLine("The program took: " + SimManager.Instance.Cycles + " cycles to execute.");
+                Console.WriteLine("Press any key to exit.");
+                Console.Read();
             }
             else
             {
