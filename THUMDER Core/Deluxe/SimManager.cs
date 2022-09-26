@@ -425,6 +425,11 @@ namespace THUMDER.Deluxe
             }
         }
 
+        public static void RunACycle()
+        {
+            Instance.DoCycle();
+        }
+
         private void DoCycle()
         {
             this.IF();  //Memory access is the first step. but won't happen if there are peding operations to memory WHICH SHOULD ONLY HAPPEN IF THERE IS A INSTRUCTION REQUESTING IT.
