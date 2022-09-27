@@ -118,12 +118,20 @@ namespace THUMDER.Interpreter
                 string clean = string.Empty;
                 foreach (string s in aux)
                 {
-                    string temp = s;
-                    while (s.IndexOf(',') != -1)
+                    string temp;
+                    string current = s;
+                    while (current.IndexOf(',') != -1)
                     {
-                        temp = s.Remove(s.IndexOf(','));
+                        temp = current;
+                        int comma = current.IndexOf(',');
+                        if (comma > 0)
+                        {
+                            temp = current.Remove(comma);
+                            current = current.Remove(0, comma + 1);
+                        }
+                        clean = string.Concat(clean, ' ', temp);
                     }
-                    clean = string.Concat(clean, ' ', temp);
+                    clean = string.Concat(clean, ' ', current);
                 }
                 return clean.Trim();
             }
@@ -145,21 +153,33 @@ namespace THUMDER.Interpreter
                             case 'i':
                             case 'I':
                                 if (cleaned[i + x + 1].Contains('#'))
-                                    decoded += " " + cleaned[i + x + 1].Remove(cleaned[i + x + 1].IndexOf('#')); //Remove # from immediate values if present.
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i+x+1].IndexOf('#') + 1)); //Remove # from immediate values if present.
                                 else
                                     decoded += " " + cleaned[i + x + 1];
                                 break;
                             case 'd':
                             case 'D':
                                 if (cleaned[i + x + 1].Contains('$'))
-                                    decoded += " " + cleaned[i + x + 1].Remove('$'); //Remove $ from labels if present.
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('$') + 1)); //Remove $ from labels if present.
                                 else
                                     decoded += " " + cleaned[i + x + 1];
                                 break;
                             case 'c':
                             case 'b':
                             case 'a':
-                                decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(1));
+                                if (cleaned[i + x + 1].Trim()[0] is 'r' or 'f')
+                                {
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(1));
+                                }
+                                else if (cleaned[i + x + 1].Contains('r') || cleaned[i + x + 1].Contains('f'))
+                                {
+                                    int index;
+                                    index = cleaned[i + x + 1].IndexOf('r') != -1 ? cleaned[i + x + 1].IndexOf('r') : cleaned[i + x + 1].IndexOf('f');
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(0, index));
+                                    decoded = string.Concat(decoded, cleaned[i + x + 1].AsSpan(index + 1));
+                                }
+                                else
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(0));
                                 break;
                             default:
                                 throw new ArgumentException("Invalid argument \"" + cleaned[i + x + 1] + "\" at line " + lineCount); //Remove R or F from registers names.

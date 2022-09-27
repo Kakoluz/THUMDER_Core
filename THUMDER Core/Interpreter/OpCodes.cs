@@ -81,20 +81,20 @@ namespace THUMDER.Interpreter
             new Instruction ( "cvti2d",   0x0400000D,   "c,a,b" ),  /* Convert integer to double     */
             new Instruction ( "mult",     0x0400000E,   "c,a,b" ),  /* Multiply integer              */
             new Instruction ( "div",      0x0400000F,   "c,a,b" ),  /* Divide integer                */
-            new Instruction ( "eqf",      0x04000010,   "c,a,b" ),  /* Set if equal float            */
-            new Instruction ( "nef",      0x04000011,   "c,a,b" ),  /* Set if not equal float        */
-            new Instruction ( "ltf",      0x04000012,   "c,a,b" ),  /* Set if less  float            */
-            new Instruction ( "lgf",      0x04000013,   "c,a,b" ),  /* Set if greater float          */
-            new Instruction ( "lef",      0x04000014,   "c,a,b" ),  /* Set if less or equal float    */
-            new Instruction ( "gef",      0x04000015,   "c,a,b" ),  /* Set if greater or equal float */
+            new Instruction ( "eqf",      0x04000010,   "a,b"   ),  /* Set if equal float            */
+            new Instruction ( "nef",      0x04000011,   "a,b"   ),  /* Set if not equal float        */
+            new Instruction ( "ltf",      0x04000012,   "a,b"   ),  /* Set if less  float            */
+            new Instruction ( "lgf",      0x04000013,   "a,b"   ),  /* Set if greater float          */
+            new Instruction ( "lef",      0x04000014,   "a,b"   ),  /* Set if less or equal float    */
+            new Instruction ( "gef",      0x04000015,   "a,b"   ),  /* Set if greater or equal float */
             new Instruction ( "multu",    0x04000016,   "c,a,b" ),  /* Multiply Unsigned             */
             new Instruction ( "divu",     0x04000017,   "c,a,b" ),  /* Divide Unsigned               */
-            new Instruction ( "eqd",      0x04000018,   "c,a,b" ),  /* Set if equal double           */
-            new Instruction ( "ned",      0x04000019,   "c,a,b" ),  /* Set if not equal double       */
-            new Instruction ( "ltd",      0x0400001A,   "c,a,b" ),  /* Set if less  double           */
-            new Instruction ( "gtd",      0x0400001B,   "c,a,b" ),  /* Set if greater double         */
-            new Instruction ( "led",      0x0400001C,   "c,a,b" ),  /* Set if less or equal double   */
-            new Instruction ( "ged",      0x0400001D,   "c,a,b" ),  /* Set if greater or equal double*/
+            new Instruction ( "eqd",      0x04000018,   "a,b"   ),  /* Set if equal double           */
+            new Instruction ( "ned",      0x04000019,   "a,b"   ),  /* Set if not equal double       */
+            new Instruction ( "ltd",      0x0400001A,   "a,b"   ),  /* Set if less  double           */
+            new Instruction ( "gtd",      0x0400001B,   "a,b"   ),  /* Set if greater double         */
+            new Instruction ( "led",      0x0400001C,   "a,b"   ),  /* Set if less or equal double   */
+            new Instruction ( "ged",      0x0400001D,   "a,b"   ),  /* Set if greater or equal double*/
 
             /* Arithmetic and Logical Immediate I-TYPE instructions.  */
             new Instruction ( "addi",     0x20000000,   "b,a,I" ),  /* Add Immediate                 */
