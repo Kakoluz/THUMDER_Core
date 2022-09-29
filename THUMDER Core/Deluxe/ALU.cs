@@ -5,7 +5,7 @@
         public bool Busy { get; private set; }
         public bool Done { get; private set; }
         private int cyclesRemaining;
-        private int a, b, c;
+        private int a, b, c, result, dest;
         private short operation;
 
         public ALU()
@@ -29,7 +29,6 @@
                 this.a = a;
                 this.b = b;
                 this.cyclesRemaining = 1; //All ALU operations are 1 cycle long.
-                this.Done = false;
                 this.operation = (short)op;
                 this.Busy = true;
             }
@@ -42,13 +41,14 @@
         /// </summary>
         public void DoTick()
         {
+            Done = false;
             if (Busy)
             {
                 cyclesRemaining--;
                 if (cyclesRemaining == 0)
                 {
+                    dest = DoOperation();
                     Busy = false;
-                    Done = true;
                 }
             }
         }
@@ -59,8 +59,14 @@
         /// <returns>The value or null if its not ready.</returns>
         public int? GetValue(out int dest)
         {
-            dest = c;
-            int? result = null;
+            dest = this.dest;
+            return Done ? result : null;
+        }
+        /// <summary>
+        /// Will do the operation and set the Done flag to true.
+        /// </summary>
+        private int DoOperation()
+        {
             switch (operation)
             {
                 //Arithmetic Logical Operations
@@ -126,12 +132,11 @@
                 case 7:  //SRA
                     result = a;
                     for (int i = 0; i < b; i++)
-                        result /=  2; //C# does not implement the arithmetic shift so dividing by 2 does the job.
-                    break;                  
+                        result /= 2; //C# does not implement the arithmetic shift so dividing by 2 does the job.
+                    break;
             }
-            bool returnVal = Done;
-            Done = false;
-            return returnVal ? result : null;
+            Done = true;
+            return c;
         }
     }
 }

@@ -80,6 +80,12 @@ namespace THUMDER.Interpreter
                 {
                     if (file[l] != String.Empty)
                         assembly.DataSegment.Add(DecodeData(file[l], l)); //Decode data directives and add them to the assembly.
+                    if (assembly.Labels.ContainsKey((uint)(l))) //Update the labels to their placement in the segment
+                    {
+                        string label = assembly.Labels[(uint)l];
+                        assembly.Labels.Remove((uint)l);
+                        assembly.Labels.Add((uint)(l - dataSegement), label);
+                    }
                 }
             }
 
@@ -89,7 +95,13 @@ namespace THUMDER.Interpreter
             {
                 if (file[l] != String.Empty)
                     assembly.CodeSegment.Add(DecodeInstruction(file[l], l)); //Check instruction sintax and add them to the assembly.
-            }
+                if (assembly.Labels.ContainsKey((uint)(l))) //Update the labels to their placement in the segment
+                {
+                    string label = assembly.Labels[(uint)l];
+                    assembly.Labels.Remove((uint)l);
+                    assembly.TextLabels.Add((uint)(assembly.CodeSegment.Count), label);
+                }
+            }            
             return assembly;
         }
 
@@ -153,16 +165,33 @@ namespace THUMDER.Interpreter
                             case 'i':
                             case 'I':
                                 if (cleaned[i + x + 1].Contains('#'))
-                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i+x+1].IndexOf('#') + 1)); //Remove # from immediate values if present.
-                                else
-                                    decoded += " " + cleaned[i + x + 1];
-                                break;
-                            case 'd':
-                            case 'D':
-                                if (cleaned[i + x + 1].Contains('$'))
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('#') + 1)); //Remove # from immediate values if present.
+                                else if (cleaned[i + x + 1].Contains('$'))
                                     decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('$') + 1)); //Remove $ from labels if present.
                                 else
                                     decoded += " " + cleaned[i + x + 1];
+                                break;
+                            case 'p':
+                            case 'P':
+                            case 'd':
+                            case 'D':
+                                if (cleaned[i + x + 1].Trim()[0] is 'r' or 'f')
+                                {
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(1));
+                                }
+                                else if (cleaned[i + x + 1].Contains('r') || cleaned[i + x + 1].Contains('f'))
+                                {
+                                    int index;
+                                    index = cleaned[i + x + 1].IndexOf('r') != -1 ? cleaned[i + x + 1].IndexOf('r') : cleaned[i + x + 1].IndexOf('f');
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(0, index));
+                                    decoded = string.Concat(decoded, cleaned[i + x + 1].AsSpan(index + 1));
+                                }
+                                else if (cleaned[i + x + 1].Contains('#'))
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('#') + 1)); //Remove # from immediate values if present.
+                                else if (cleaned[i + x + 1].Contains('$'))
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('$') + 1)); //Remove $ from labels if present.
+                                else
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(0));
                                 break;
                             case 'c':
                             case 'b':

@@ -67,6 +67,7 @@ namespace THUMDER
                     default:
                         try
                         {
+                            Console.WriteLine("Starting THUMDER Core locally.");
                             RunLocally(args[0]);
                         }
                         catch (Exception e)
@@ -93,12 +94,15 @@ namespace THUMDER
         {
             if (File.Exists(PathToFile))
             {
+
                 string[] file = File.ReadAllLines(PathToFile);
+                Console.WriteLine("Reading file contents and checking for errors.");
                 ASM assembly = Assembler.Decode(file);
+                Console.WriteLine("Loading file " + PathToFile + " into memory and starting THUMDER Core.");
                 SimManager.LoadProgram(assembly);
                 Console.WriteLine("Loaded program " + Path.GetFileName(PathToFile));
                 Console.WriteLine("Press any key to start execution.");
-                Console.Read();
+                Console.ReadKey();
                 SimManager.RunFullSimulation();
                 Console.WriteLine("The program took: " + SimManager.Instance.Cycles + " cycles to execute.");
                 Console.WriteLine("Press any key to exit.");

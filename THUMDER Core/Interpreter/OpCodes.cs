@@ -97,9 +97,9 @@ namespace THUMDER.Interpreter
             new Instruction ( "ged",      0x0400001D,   "a,b"   ),  /* Set if greater or equal double*/
 
             /* Arithmetic and Logical Immediate I-TYPE instructions.  */
-            new Instruction ( "addi",     0x20000000,   "b,a,I" ),  /* Add Immediate                 */
+            new Instruction ( "addi",     0x20000000,   "b,a,i" ),  /* Add Immediate                 */
             new Instruction ( "addui",    0x24000000,   "b,a,i" ),  /* Add Usigned Immediate         */
-            new Instruction ( "subi",     0x28000000,   "b,a,I" ),  /* Sub Immediate                 */
+            new Instruction ( "subi",     0x28000000,   "b,a,i" ),  /* Sub Immediate                 */
             new Instruction ( "subui",    0x2C000000,   "b,a,i" ),  /* Sub Unsigned Immedated        */
             new Instruction ( "andi",     0x30000000,   "b,a,i" ),  /* AND Immediate                 */
             new Instruction ( "ori",      0x34000000,   "b,a,i" ),  /* OR  Immediate                 */
@@ -118,26 +118,26 @@ namespace THUMDER.Interpreter
             new Instruction ( "lhi",      0x3C000000,   "b,i"   ),  /* Load High Immediate           */
                                                                                                      
             /* LOAD/STORE BYTE 8 bits I-TYPE.  */                                                    
-            new Instruction ( "lb",       0x80000000,   "b,a"   ),  /* Load Byte                     */
-            new Instruction ( "lbu",      0x90000000,   "b,a"   ),  /* Load Byte Unsingned           */
-            new Instruction ( "sb",       0xA0000000,   "b,a"   ),  /* Store Byte                    */
+            new Instruction ( "lb",       0x80000000,   "b,p"   ),  /* Load Byte                     */
+            new Instruction ( "lbu",      0x90000000,   "b,p"   ),  /* Load Byte Unsingned           */
+            new Instruction ( "sb",       0xA0000000,   "p,b"   ),  /* Store Byte                    */
                                                                                                      
             /* LOAD/STORE HALFWORD 16 bits.  */                                                      
-            new Instruction ( "lh",       0x84000000,   "b,a"   ),  /* Load Halfword                 */
-            new Instruction ( "lhu",      0x94000000,   "b,a"   ),  /* Load Halfword Unsingned       */
-            new Instruction ( "sh",       0xA4000000,   "b,a"   ),  /* Store Halfword                */
+            new Instruction ( "lh",       0x84000000,   "b,p"   ),  /* Load Halfword                 */
+            new Instruction ( "lhu",      0x94000000,   "b,p"   ),  /* Load Halfword Unsingned       */
+            new Instruction ( "sh",       0xA4000000,   "p,a"   ),  /* Store Halfword                */
                                                                                                      
             /* LOAD/STORE WORD 32 bits.  */                                                          
-            new Instruction ( "lw",       0x8C000000,   "b,a"   ),  /* Load Word                     */
-            new Instruction ( "sw",       0xAC000000,   "b,a"   ),  /* Store Word                    */
+            new Instruction ( "lw",       0x8C000000,   "b,p"   ),  /* Load Word                     */
+            new Instruction ( "sw",       0xAC000000,   "p,a"   ),  /* Store Word                    */
                                                                                                      
             /* LOAD/STORE FLOATS.  */                                                                
-            new Instruction ( "lf",       0x98000000,   "b,a"   ),  /* Load Float                    */
-            new Instruction ( "sf",       0xB8000000,   "b,a"   ),  /* Store Float                   */
+            new Instruction ( "lf",       0x98000000,   "b,p"   ),  /* Load Float                    */
+            new Instruction ( "sf",       0xB8000000,   "a,p"   ),  /* Store Float                   */
                                                                                                      
             /* LOAD/STORE DOUBLES.  */                                                               
-            new Instruction ( "ld",       0x9C000000,   "b,a"   ),  /* Load Double                   */
-            new Instruction ( "sd",       0xBC000000,   "b,a"   ),  /* Store Double                  */
+            new Instruction ( "ld",       0x9C000000,   "b,p"   ),  /* Load Double                   */
+            new Instruction ( "sd",       0xBC000000,   "a,p"   ),  /* Store Double                  */
                                                                                                      
             /* Branch PC-relative, 16 bits offset.  */                                               
             new Instruction ( "beqz",     0x10000000,   "a,d"   ),  /* Branch if a == 0              */

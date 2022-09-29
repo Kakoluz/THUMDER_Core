@@ -1,12 +1,17 @@
-﻿namespace THUMDER.Deluxe
+﻿using System.Collections.Specialized;
+using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
+
+namespace THUMDER.Deluxe
 {
     internal class FPU
     {
         public bool Busy { get; private set; }
         public bool Done { get; private set; }
+        private bool isDouble;
         private int cyclesRemaining;
-        private double a, b;
-        private int c;
+        private double a, b, result;
+        private int c, dest;
         private short operation;
 
         public FPU()
@@ -31,7 +36,6 @@
                 this.a = a;
                 this.b = b;
                 this.cyclesRemaining = time;
-                this.Done = false;
                 this.operation = (short)op;
                 this.Busy = true;
             }
@@ -44,13 +48,14 @@
         /// </summary>
         public void DoTick()
         {
+            Done = false;
             if (Busy)
             {
                 cyclesRemaining--;
                 if (cyclesRemaining == 0)
                 {
+                    dest = DoOperation();
                     Busy = false;
-                    Done = true;
                 }
             }
         }
@@ -63,9 +68,15 @@
         /// <returns>The operated value or null if its not ready</returns>
         public double? GetValue(out int dest, out bool isDouble)
         {
-            double? result = null;
-            isDouble = false;
-            dest = c;
+            isDouble = this.isDouble;
+            dest = this.dest;
+            return Done ? result : null;
+        }
+        /// <summary>
+        /// Will do the operation and set the Done flag to true.
+        /// </summary>
+        private int DoOperation()
+        {
             switch (operation)
             {
                 case 0: //ADDF
@@ -125,9 +136,8 @@
                     result = (a <= b ? 1 : 0);
                     break;
             }
-            bool returnVal = Done;
-            Done = false;
-            return returnVal ? result : null;
+            Done = true;
+            return c;
         }
     }
 }
