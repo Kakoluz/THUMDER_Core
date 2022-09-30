@@ -12,7 +12,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Program Counter
         /// </summary>
-        private uint PC, startingPC, nextPC;
+        private uint PC, startingPC;
 
         /// <summary>
         /// Assembly currently loaded in memory.
@@ -48,11 +48,6 @@ namespace THUMDER.Deluxe
         /// Floating point 32 bits registers.
         /// </summary>
         private BitVector32[] fRegisters;
-
-        /// <summary>
-        /// Instruction register.
-        /// </summary>
-        private BitVector32 IR;
 
         /// <summary>
         /// Special register to store fetched data.
@@ -139,7 +134,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Stages of execution where the CPU might need to wait.
         /// </summary>
-        private bool IDstall;
+        private bool RStall;
 
         /// <summary>
         /// Controls the stopping of the emulation.
@@ -191,7 +186,7 @@ namespace THUMDER.Deluxe
         private void DoCycle()
         {
             WBreg = MEMreg;
-            if (!IDstall)   //If the instruction wasn't loaded into memory stall the CPU.
+            if (!RStall)   //If the instruction wasn't loaded into memory stall the CPU.
             {
                 MEMreg = EXreg;
                 EXreg = IDreg;

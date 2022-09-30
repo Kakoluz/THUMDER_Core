@@ -2,25 +2,33 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace THUMDER.Deluxe
 {
     internal sealed partial class SimManager
-    { 
+    {
+        private BitVector32 A = new BitVector32(0);
+        private BitVector32[] Afp = new BitVector32[2];
+        private BitVector32 B = new BitVector32(0);
+        private BitVector32[] Bfp = new BitVector32[2];
+        private BitVector32 Imm = new BitVector32(0);
+        private bool comparingFP = false;
         /// <summary>
         /// Reads the PC address and fetches de data on that memory address.
         /// </summary>
         private void IF()
         {
-            if (jump)
+            if (Condition)
             {
-                jump = false;
-                IDstall = false;
+                PC = (uint)ALUout.Data;
+                RStall = false;
                 ClearPipeline();
+                Condition = false;
             }
-            if (!IDstall)
+            if (!RStall)
             {
                 IMAR = new BitVector32((int)PC);
                 IFreg = MemoryManager.Instance.ReadWordAsBitVector((uint)IMAR.Data);
@@ -33,7 +41,7 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ID()
         {
-            if (!IDstall)
+            if (!RStall)
             {
                 this.IDOpcode = tmpIDOpcode;
                 this.address = tmpaddress;
@@ -67,9 +75,11 @@ namespace THUMDER.Deluxe
                         case 3:
                         case 10:
                         case 11:
-                            IDreg[opSection] = 0;                 // Since BitVector32 Sections only support up to 16bits, we need to place the upper 6 bits to 0
                             this.tmpaddress = IDreg.Data;         // then we can use the whole 32 bits as the address value and 
                             IDreg[opSection] = (int)tmpIDOpcode;  // then we can place the opcode back into the instruction.
+                            break;
+                        case 17:
+                            trap0Found = true;
                             break;
                         default: //Immediate numbers
                             this.tmpaddress = IDreg[addressSection]; //Place the immediate number in rs2 to operate it.
@@ -79,7 +89,7 @@ namespace THUMDER.Deluxe
                     }
                 }
             }
-            switch (MEMreg[opSection]) //Set the condition for jumps based on the isntruction on mem.
+            switch (IDreg[opSection]) //Set the condition for jumps based on the isntruction on mem.
             {
                 case 2: //JUMPS AND BRANCHES
                     Condition = true;
@@ -100,18 +110,21 @@ namespace THUMDER.Deluxe
                     Condition = FPstatus.Data == 0;
                     break;
                 case 16: //RFE
-                    //UNIMPLEMENTED
+                         //UNIMPLEMENTED
                     break;
                 case 17:
                     //trap0Found = true;
                     break;
                 case 18: //JR
-                    //UNIMPLEMENTED
+                         //UNIMPLEMENTED
                     break;
                 case 19:
                     Condition = true;
                     break;
             }
+            ALUout = tempOpRegister;
+            FPUout = tempFpRegister;
+            RStall = !this.LoadInstruction();
         }
         
         /// <summary>
@@ -119,9 +132,10 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void EX()
         {
-            ALUout = tempOpRegister;
-            FPUout = tempFpRegister;
-            IDstall = !this.LoadInstruction();
+            if (!RStall)
+            {
+                ExecuteInstruction();
+            }
             if (PedingMemAccess.Count <= 1)
                 PedingMemAccess.Add(null); //Put a null memory access to have it indicate that there is no pending memory access and next insctruction can be taken.
             this.UnloadUnits();
@@ -172,12 +186,6 @@ namespace THUMDER.Deluxe
                     }
                 }
             }
-            if (Condition)
-            {
-                PC = (uint)ALUout.Data;
-                jump = true;
-                Condition = false;
-            }
             PedingMemAccess.RemoveAt(0);
         }
 
@@ -188,9 +196,6 @@ namespace THUMDER.Deluxe
         {
             switch (WBreg[opSection])
             {
-                case 17:
-                    trap0Found = true; //END program only if everything is already done.
-                    break;
                 case 0: //Wirte Reg-Reg
                     if (WBreg[functSection] != 0)
                     {
@@ -220,7 +225,7 @@ namespace THUMDER.Deluxe
                     break;
                 case 39: //Wirte double from memory
                     fRegisters[WBreg[rs2Section]] = LMD[0];
-                    fRegisters[WBreg[rs2Section] + 1] = LMD[1];
+                    fRegisters[WBreg[rs2Section] - 1] = LMD[1];
                     break;
             }
         }
@@ -230,9 +235,7 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ClearPipeline()
         {
-            IFreg = zeroBits; //Clear the execution pipeline
-            IDreg = zeroBits;
-            EXreg = zeroBits;
+            IDreg = zeroBits; //Clear the execution pipeline
             this.tmpIDOpcode = 0; //Clean the decoded instruction.
             this.tmpaddress = 0;
             this.tmpfunct = 0;
@@ -276,6 +279,7 @@ namespace THUMDER.Deluxe
                     else if (dest >= 33)
                     {
                         FPstatus = new BitVector32((int)output);
+                        comparingFP = false;
                     }
                     return; //Unload only 1 unit per cycle.
                 }
@@ -335,31 +339,28 @@ namespace THUMDER.Deluxe
         /// <returns>If the instruction was corretly loaded.</returns>
         private bool LoadInstruction()
         {
-            BitVector32 A = new BitVector32(0);
-            BitVector32[] Afp = new BitVector32[2];
-            BitVector32 B = new BitVector32(0);
-            BitVector32[] Bfp = new BitVector32[2];
-            BitVector32 Imm = new BitVector32(address);
-            bool success = true;
+            
+            A = new BitVector32(0);
+            Afp = new BitVector32[2];
+            B = new BitVector32(0);
+            Bfp = new BitVector32[2];
+            Imm = new BitVector32(address);
             if (rs1 < 33)
             {
                 A = new BitVector32(Registers[rs1].Data);
-                Afp[0] = new BitVector32(Registers[rs1].Data);
-                Afp[1] = new BitVector32(Registers[rs1].Data + 1);
+                Afp[0] = new BitVector32(fRegisters[rs1].Data);
+                Afp[1] = new BitVector32(fRegisters[rs1].Data - 1);
             }
             if (rs2 < 33)
             {
                 B = new BitVector32(Registers[rs2].Data);
-                Bfp[0] = new BitVector32(Registers[rs2].Data);
-                Bfp[1] = new BitVector32(Registers[rs2].Data + 1);
+                Bfp[0] = new BitVector32(fRegisters[rs2].Data);
+                Bfp[1] = new BitVector32(fRegisters[rs2].Data - 1);
             }
             if (shamt != 0)
             {
                 B = new BitVector32(MemoryManager.Instance.ReadWord((uint)(rs2 + shamt)));
             }
-
-            BitVector32[] arr = new BitVector32[2]; //Aux vector
-            List<byte> aux = new List<byte>();
             if ((IDOpcode is 1 or 0) || (IDOpcode > 7 && IDOpcode < 40)) //first check the instruction if it will use registers.
             {
                 if (!(IDOpcode is 0 && funct is 0)) //Check if its a nop.
@@ -411,6 +412,91 @@ namespace THUMDER.Deluxe
                     else if (WBreg.Data != zeroBits.Data && (WBreg[rdSection] == rs1 || WBreg[rdSection] == rs2)) //Check if we are using ready to be written to registers.
                     {
                         if (WBreg[opSection] is 0 || WBreg[opSection] is > 7 and < 32) //Check de instruction in MEM stage to forward data from. (this one just got out of the EX unit)
+                        {
+                            if (WBreg[rdSection] != 0 && (WBreg[rdSection] == rs1) && rs1 != 0)
+                            {
+                                if (Forwarding)
+                                    A = ALUout;
+                                else
+                                    return false;
+                            }
+                            else if (WBreg[rdSection] != 0 && (WBreg[rdSection] == rs2) && rs2 != 0)
+                            {
+                                if (Forwarding)
+                                    B = ALUout;
+                                else
+                                    return false;
+                            }
+                        }
+                        else if (WBreg[opSection] is > 31 and < 38) //Check if we are loading from memory
+                        {
+                            if (WBreg[rs2Section] == rs1 && rs1 != 0)
+                            {
+                                if (Forwarding)
+                                    A = LMD[0];
+                                else
+                                    return false;
+                            }
+                            else if (WBreg[rs2Section] == rs2 && rs2 != 0)
+                            {
+                                if (Forwarding)
+                                    B = LMD[0];
+                                else
+                                    return false;
+                            }
+                        }
+                        else if (WBreg[opSection] == 1) //Same check but for fp instructions.
+                        {
+                            if (WBreg[rdSection] == rs1)
+                            {
+                                if (Forwarding)
+                                    Afp = FPUout;
+                                else
+                                    return false;
+                            }
+                            else if (WBreg[rdSection] == rs2)
+                            {
+                                if (Forwarding)
+                                    Bfp = FPUout;
+                                else
+                                    return false;
+                            }
+                        }
+                        else if (WBreg[opSection] is 38 or 39) //Check if we are loading a floatin point number.
+                        {
+                            if (WBreg[rs2Section] == rs1)
+                            {
+                                if (Forwarding)
+                                    Afp = LMD;
+                                else
+                                    return false;
+                            }
+                            else if (WBreg[rs2Section] == rs2)
+                            {
+                                if (Forwarding)
+                                    Bfp = LMD;
+                                else
+                                    return false;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        
+        private bool ExecuteInstruction()
+        {
+            bool success = true;
+            BitVector32[] arr = new BitVector32[2]; //Aux vector
+            List<byte> aux = new List<byte>();
+            if ((IDOpcode is 1 or 0) || (IDOpcode > 7 && IDOpcode < 40)) //first check the instruction if it will use registers.
+            {
+                if (!(IDOpcode is 0 && funct is 0)) //Check if its a nop.
+                {
+                    if (WBreg.Data != zeroBits.Data && (WBreg[rdSection] == rs1 || WBreg[rdSection] == rs2)) //Check if we are using ready to be written to registers.
+                    {
+                        if (WBreg[opSection] is 0 || WBreg[opSection] is > 7 and < 32) //Check de instruction in WB stage to forward data from. (this one just got out of the MEM unit)
                         {
                             if (WBreg[rdSection] != 0 && (WBreg[rdSection] == rs1) && rs1 != 0)
                             {
@@ -659,6 +745,7 @@ namespace THUMDER.Deluxe
                                 if (!fpu.Busy)
                                 {
                                     fpu.LoadValues(33, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), (int)funct, 1);
+                                    comparingFP = true;
                                     break;
                                 }
                                 if (adds.Last() == fpu)
@@ -679,6 +766,7 @@ namespace THUMDER.Deluxe
                                 {
                                     byte[] auxArr = aux.ToArray();
                                     fpu.LoadValues(33, BitConverter.ToDouble(auxArr, 0), BitConverter.ToDouble(auxArr, 8), (int)funct, 1);
+                                    comparingFP = true;
                                     break;
                                 }
                                 if (adds.Last() == fpu)
@@ -708,7 +796,7 @@ namespace THUMDER.Deluxe
                             break;
                         case 51: //MOVD
                             arr[0] = new BitVector32(fRegisters[(int)rs1]);
-                            arr[1] = new BitVector32(fRegisters[(int)rs1 + 1]);
+                            arr[1] = new BitVector32(fRegisters[(int)rs1 - 1]);
                             this.tempFpRegister = arr;
                             break;
                         case 52: //MOVFP2I
@@ -757,7 +845,7 @@ namespace THUMDER.Deluxe
                     //UNIMPLEMENTED
                     break;
                 case 17:
-                    //Found trap 0. will be processed in WB.
+                    trap0Found = true;//Found trap 0. will be processed in WB.
                     break;
                 case 18: //JR
                     //UNIMPLEMENTED
