@@ -21,13 +21,6 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void IF()
         {
-            if (Condition)
-            {
-                PC = (uint)ALUout.Data;
-                RStall = false;
-                ClearPipeline();
-                Condition = false;
-            }
             if (!RStall)
             {
                 IMAR = new BitVector32((int)PC);
@@ -43,29 +36,22 @@ namespace THUMDER.Deluxe
         {
             if (!RStall)
             {
-                this.IDOpcode = tmpIDOpcode;
-                this.address = tmpaddress;
-                this.funct = tmpfunct;
-                this.shamt = tmpshamt;
-                this.rd = tmprd;
-                this.rs2 = tmprs2;
-                this.rs1 = tmprs1;
-                this.tmpIDOpcode = 0;
-                this.tmpaddress = 0;
-                this.tmpfunct = 0;
-                this.tmpshamt = 0;
-                this.tmprd = 0;
-                this.tmprs2 = 0;
-                this.tmprs1 = 0;
+                this.IDOpcode = 0;
+                this.address  = 0;
+                this.funct    = 0;
+                this.shamt    = 0;
+                this.rd       = 0;
+                this.rs2      = 0;
+                this.rs1      = 0;
 
-                this.tmpIDOpcode = IDreg[opSection];
-                if (this.tmpIDOpcode is 0 or 1)
+                this.IDOpcode = IDreg[opSection];
+                if (this.IDOpcode is 0 or 1)
                 {
-                    this.tmpfunct = IDreg[functSection];
-                    this.tmpshamt = IDreg[shamtSection];
-                    this.tmprd = IDreg[rdSection];
-                    this.tmprs2 = IDreg[rs2Section];
-                    this.tmprs1 = IDreg[rs1Section];
+                    this.funct = IDreg[functSection];
+                    this.shamt = IDreg[shamtSection];
+                    this.rd = IDreg[rdSection];
+                    this.rs2 = IDreg[rs2Section];
+                    this.rs1 = IDreg[rs1Section];
                 }
                 else
                 {
@@ -75,56 +61,54 @@ namespace THUMDER.Deluxe
                         case 3:
                         case 10:
                         case 11:
-                            this.tmpaddress = IDreg.Data;         // then we can use the whole 32 bits as the address value and 
-                            IDreg[opSection] = (int)tmpIDOpcode;  // then we can place the opcode back into the instruction.
+                            this.address = IDreg.Data;         // then we can use the whole 32 bits as the address value and 
+                            IDreg[opSection] = (int)IDOpcode;  // then we can place the opcode back into the instruction.
                             break;
                         case 17:
                             trap0Found = true;
                             break;
                         default: //Immediate numbers
-                            this.tmpaddress = IDreg[addressSection]; //Place the immediate number in rs2 to operate it.
-                            this.tmprd = IDreg[rs2Section]; //For I-type rd is placed in the 5 bits of rs2.
-                            this.tmprs1 = IDreg[rs1Section];
+                            this.address = IDreg[addressSection]; //Place the immediate number in rs2 to operate it.
+                            this.rd = IDreg[rs2Section]; //For I-type rd is placed in the 5 bits of rs2.
+                            this.rs1 = IDreg[rs1Section];
                             break;
                     }
                 }
+                switch (IDreg[opSection]) //Set the condition for jumps based on the isntruction on mem.
+                {
+                    case 2: //JUMPS AND BRANCHES
+                        Condition = true;
+                        break;
+                    case 3:
+                        Condition = true;
+                        break;
+                    case 4:
+                        Condition = Registers[rs1].Data == 0;
+                        break;
+                    case 5:
+                        Condition = Registers[rs1].Data != 0;
+                        break;
+                    case 6:
+                        Condition = FPstatus.Data == 1;
+                        break;
+                    case 7:
+                        Condition = FPstatus.Data == 0;
+                        break;
+                    case 16: //RFE
+                             //UNIMPLEMENTED
+                        break;
+                    case 17:
+                        //trap0Found = true;
+                        break;
+                    case 18: //JR
+                             //UNIMPLEMENTED
+                        break;
+                    case 19:
+                        Condition = true;
+                        break;
+                }
             }
-            switch (IDreg[opSection]) //Set the condition for jumps based on the isntruction on mem.
-            {
-                case 2: //JUMPS AND BRANCHES
-                    Condition = true;
-                    break;
-                case 3:
-                    Condition = true;
-                    break;
-                case 4:
-                    Condition = Registers[rs1].Data == 0;
-                    break;
-                case 5:
-                    Condition = Registers[rs1].Data != 0;
-                    break;
-                case 6:
-                    Condition = FPstatus.Data == 1;
-                    break;
-                case 7:
-                    Condition = FPstatus.Data == 0;
-                    break;
-                case 16: //RFE
-                         //UNIMPLEMENTED
-                    break;
-                case 17:
-                    //trap0Found = true;
-                    break;
-                case 18: //JR
-                         //UNIMPLEMENTED
-                    break;
-                case 19:
-                    Condition = true;
-                    break;
-            }
-            ALUout = tempOpRegister;
-            FPUout = tempFpRegister;
-            RStall = !this.LoadInstruction();
+            this.LoadInstruction();
         }
         
         /// <summary>
@@ -132,13 +116,10 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void EX()
         {
-            if (!RStall)
-            {
-                ExecuteInstruction();
-            }
+            TickAllUnits();
+            RStall = !ExecuteInstruction();
             if (PedingMemAccess.Count <= 1)
                 PedingMemAccess.Add(null); //Put a null memory access to have it indicate that there is no pending memory access and next insctruction can be taken.
-            this.UnloadUnits();
         }
 
         /// <summary>
@@ -186,6 +167,13 @@ namespace THUMDER.Deluxe
                     }
                 }
             }
+            if (Condition)
+            {
+                PC = (uint)ALUout.Data;
+                RStall = false;
+                ClearPipeline();
+                Condition = false;
+            }
             PedingMemAccess.RemoveAt(0);
         }
 
@@ -202,6 +190,9 @@ namespace THUMDER.Deluxe
                         Registers[WBreg[rdSection]] = ALUout;
                         UsedRegisters[WBreg[rdSection]] = 0;
                     }
+                    break;
+                case 17:
+                    trap0Found = true;
                     break;
                 case > 7 and < 16: //Wirte Reg-imm
                 case > 19 and < 32:
@@ -235,14 +226,15 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ClearPipeline()
         {
-            IDreg = zeroBits; //Clear the execution pipeline
-            this.tmpIDOpcode = 0; //Clean the decoded instruction.
-            this.tmpaddress = 0;
-            this.tmpfunct = 0;
-            this.tmpshamt = 0;
-            this.tmprd = 0;
-            this.tmprs2 = 0;
-            this.tmprs1 = 0;
+            IDreg = zeroBits; //Clear the execution pipeline\
+            IFreg = zeroBits;
+            this.IDOpcode = 0; //Clean the decoded instruction.
+            this.address = 0;
+            this.funct = 0;
+            this.shamt = 0;
+            this.rd = 0;
+            this.rs2 = 0;
+            this.rs1 = 0;
         }
 
         /// <summary>
@@ -331,6 +323,7 @@ namespace THUMDER.Deluxe
                 a.DoTick();
             foreach (var a in divs)
                 a.DoTick();
+            UnloadUnits();
         }
 
         /// <summary>
@@ -372,14 +365,14 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rdSection] != 0 && (MEMreg[rdSection] == rs1) && rs1 != 0)
                             {
                                 if (Forwarding)
-                                    A = tempOpRegister;
+                                    A = ALUout;
                                 else
                                     return false;
                             }
                             else if (MEMreg[rdSection] != 0 && (MEMreg[rdSection] == rs2) && rs2 != 0)
                             {
                                 if (Forwarding)
-                                    B = tempOpRegister;
+                                    B = ALUout;
                                 else
                                     return false;
                             }
@@ -389,14 +382,14 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rdSection] == rs1)
                             {
                                 if (Forwarding)
-                                    Afp = tempFpRegister;
+                                    Afp = FPUout;
                                 else
                                     return false;
                             }
                             else if (MEMreg[rdSection] == rs2)
                             {
                                 if (Forwarding)
-                                    Bfp = tempFpRegister;
+                                    Bfp = FPUout;
                                 else
                                     return false;
                             }
@@ -409,7 +402,7 @@ namespace THUMDER.Deluxe
                                 return false;
                         }
                     }
-                    else if (WBreg.Data != zeroBits.Data && (WBreg[rdSection] == rs1 || WBreg[rdSection] == rs2)) //Check if we are using ready to be written to registers.
+                    /*else if (WBreg.Data != zeroBits.Data && (WBreg[rdSection] == rs1 || WBreg[rdSection] == rs2)) //Check if we are using ready to be written to registers.
                     {
                         if (WBreg[opSection] is 0 || WBreg[opSection] is > 7 and < 32) //Check de instruction in MEM stage to forward data from. (this one just got out of the EX unit)
                         {
@@ -479,7 +472,7 @@ namespace THUMDER.Deluxe
                                     return false;
                             }
                         }
-                    }
+                    }*/
                 }
             }
             return true;
@@ -574,31 +567,31 @@ namespace THUMDER.Deluxe
                     {
                         case 8: //CVTF2D
                             arr[0] = new BitVector32(fRegisters[rs1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout = arr;
                             break;
                         case 9: //CVTF2I
-                            this.tempOpRegister = fRegisters[rs1];
+                            this.ALUout= fRegisters[rs1];
                             break;
                         case 10: //CVTD2F
                             aux.Clear();
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
                             arr[0] = new BitVector32(BitConverter.ToInt32(aux.ToArray(), 0));
-                            this.tempFpRegister = arr;
+                            this.FPUout = arr;
                             break;
                         case 11: //CVTD2I
                             aux.Clear();
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1].Data));
                             aux.AddRange(BitConverter.GetBytes(fRegisters[rs1 + 1].Data));
-                            this.tempOpRegister = new BitVector32(BitConverter.ToInt32(aux.ToArray()));
+                            this.ALUout = new BitVector32(BitConverter.ToInt32(aux.ToArray()));
                             break;
                         case 12: //CVTI2F
                             arr[0] = new BitVector32(Registers[rs1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout = arr;
                             break;
                         case 13: //CVTI2D
                             arr[0] = new BitVector32(fRegisters[rs1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout= arr;
                             break;
                         case 0: //ADDF
                         case 1: //SUBF
@@ -792,19 +785,19 @@ namespace THUMDER.Deluxe
                             break;
                         case 50: //MOVF
                             arr[0] = new BitVector32(fRegisters[(int)rs1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout = arr;
                             break;
                         case 51: //MOVD
                             arr[0] = new BitVector32(fRegisters[(int)rs1]);
                             arr[1] = new BitVector32(fRegisters[(int)rs1 - 1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout = arr;
                             break;
                         case 52: //MOVFP2I
-                            this.tempOpRegister = fRegisters[(int)rs1];
+                            this.ALUout = fRegisters[(int)rs1];
                             break;
                         case 53: //MOVI2FP
                             arr[0] = new BitVector32(Registers[(int)rs1]);
-                            this.tempFpRegister = arr;
+                            this.FPUout= arr;
                             break;
                         default: //ALU OPERATIONS
                             foreach (ALU alu in alus)
@@ -823,23 +816,23 @@ namespace THUMDER.Deluxe
                     }
                     break;
                 case 2: //JUMPS AND BRANCHES
-                    tempOpRegister = new BitVector32(address);
+                    ALUout = new BitVector32(address);
                     break;
                 case 3:
                     Registers[31] = new BitVector32((int)(PC));
-                    tempOpRegister = new BitVector32(address);
+                    ALUout = new BitVector32(address);
                     break;
                 case 4:
-                    tempOpRegister = new BitVector32((int)(address));
+                    ALUout = new BitVector32((int)(address));
                     break;
                 case 5:
-                    tempOpRegister = new BitVector32((int)(address));
+                    ALUout = new BitVector32((int)(address));
                     break;
                 case 6:
-                    tempOpRegister = new BitVector32((int)(address));
+                    ALUout = new BitVector32((int)(address));
                     break;
                 case 7:
-                    tempOpRegister = new BitVector32((int)(address));
+                    ALUout = new BitVector32((int)(address));
                     break;
                 case 16: //RFE
                     //UNIMPLEMENTED
@@ -852,7 +845,7 @@ namespace THUMDER.Deluxe
                     break;
                 case 19:
                     Registers[rs1] = new BitVector32((int)(PC));
-                    tempOpRegister = new BitVector32((int)(address));
+                    ALUout = new BitVector32((int)(address));
                     break;
                 default: //ALU I OPERATIONS
                     foreach (ALU alu in alus)

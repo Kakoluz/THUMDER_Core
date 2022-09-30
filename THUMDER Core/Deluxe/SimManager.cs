@@ -194,12 +194,12 @@ namespace THUMDER.Deluxe
             }
             else
                 MEMreg = zeroBits;
-            this.TickAllUnits();  //If we don't tick the units here, it won't be a segmented processor.
-            this.IF();            //Memory access is the first step. but won't happen if there are peding operations to memory WHICH SHOULD ONLY HAPPEN IF THERE IS A INSTRUCTION REQUESTING IT.
+            //this.TickAllUnits();  //If we don't tick the units here, it won't be a segmented processor.
             this.WB();            //We write to registers in the first half of the cycle.
-            this.ID();            //We read from registers in the second half to avoid data issues.
-            this.EX();            //Apply a cycle to all execution units and place results, if available on the output register.
             this.MEM();           //Access the memory if needed.
+            this.EX();            //Apply a cycle to all execution units and place results, if available on the output register.
+            this.ID();            //We read from registers in the second half to avoid data issues.
+            this.IF();            //Memory access is the first step. but won't happen if there are peding operations to memory WHICH SHOULD ONLY HAPPEN IF THERE IS A INSTRUCTION REQUESTING IT.
             ++Cycles;
         }
 
