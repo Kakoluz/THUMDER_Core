@@ -37,6 +37,26 @@ namespace THUMDER
         }
 
         /// <summary>
+        /// The main menu of the local application.
+        /// </summary>
+        static readonly string menu = "                 Main menu \n" +
+                                  "Press the key corresponding to the action you want to perform: \n" +
+                                  "F1. Show this menu again\n" +
+                                  "\n" +
+                                  "F5. Run program \n" +
+                                  "F6. Step in \n" +
+                                  "F7. Run until breakpoint \n" +
+                                  "\n" +
+                                  "F3. Print registers \n" +
+                                  "F4. Memory explorer \n" +
+                                  "\n" +
+                                  "F9. Set breakpoint \n" +
+                                  "F10. Remove breakpoint \n" +
+                                  "\n" +
+                                  "F11. Print stats \n" +
+                                  "Q. Exit \n";
+
+        /// <summary>
         /// Contains the programs entry point.
         /// </summary>
         /// <param name="args"></param>
@@ -100,13 +120,97 @@ namespace THUMDER
                 ASM assembly = Assembler.Decode(file);
                 Console.WriteLine("Loading file " + PathToFile + " into memory and starting THUMDER Core.");
                 SimManager.LoadProgram(assembly);
-                Console.WriteLine("Loaded program " + Path.GetFileName(PathToFile));
-                Console.WriteLine("Press any key to start execution.");
-                Console.ReadKey();
-                SimManager.RunFullSimulation();
-                Console.WriteLine("The program took: " + SimManager.Instance.Cycles + " cycles to execute.");
-                Console.WriteLine("Press any key to exit.");
-                Console.Read();
+                Console.WriteLine("Loaded program " + Path.GetFileName(PathToFile) + "\n");
+                bool exitFlag = false;
+                while (!exitFlag)
+                {
+                    Console.WriteLine(menu);
+                    switch (Console.ReadKey(false).Key)
+                    {
+                        case ConsoleKey.F1:
+                            Console.Clear();
+                            Console.WriteLine(menu);
+                            break;
+                        case ConsoleKey.F5:
+                            Console.Clear();
+                            SimManager.RunFullSimulation();
+                            break;
+                        case ConsoleKey.F6:
+                            Console.Clear();
+                            SimManager.RunACycle();
+                            break;
+                        case ConsoleKey.F7:
+                            Console.Clear();
+                            SimManager.RunUntilBreakpoint();
+                            break;
+                        case ConsoleKey.F3:
+                            Console.Clear();
+                            Console.WriteLine(SimManager.PrintRegisters());
+
+                            Console.WriteLine("\n Press any key to return.");
+                            Console.ReadKey(false);
+                            Console.Clear();
+                            break;
+                        case ConsoleKey.F4:
+                            //SimManager.MemoryExplorer();
+                            break;
+                        case ConsoleKey.F9:
+                            Console.Clear();
+                            Console.WriteLine("Enter the address of the breakpoint: ");
+                            string input = Console.ReadLine();
+                            try
+                            {
+                                int address = Convert.ToInt32(input);
+                                if (address != null && address >= 0 && address < SimManager.Memsize)
+                                {
+                                    SimManager.SetBreakpoint(address);
+                                    Console.WriteLine("Breakpoint added successfully.");
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Invalid address. \n" +
+                                        "Returning to menu.");
+                                }
+                            }
+                            catch (FormatException)
+                            {
+                                Console.WriteLine("The input is not a number. \n" +
+                                    "Returning to menu.");
+                            }
+                            break;
+                        case ConsoleKey.F10:
+                            Console.Clear();
+                            Console.WriteLine("Enter the address of the breakpoint: ");
+                            input = Console.ReadLine();
+                            try
+                            {
+                                int address = Convert.ToInt32(input);
+                                if (address != null && address >= 0 && address < SimManager.Memsize)
+                                {
+                                    SimManager.RemoveBreakpoint(address);
+                                    Console.WriteLine("Breakpoint added successfully.");
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Invalid address. \n" +
+                                        "Returning to menu.");
+                                }
+                            }
+                            catch (FormatException)
+                            {
+                                Console.WriteLine("The input is not a number. \n" +
+                                    "Returning to menu.");
+                            }
+                            break;
+                            break;
+                        case ConsoleKey.F11:
+                            SimManager.PrintStats();
+                            break;
+                        case ConsoleKey.Q:
+                            exitFlag = true;
+                            break;
+                    }
+                }               
             }
             else
             {
