@@ -57,12 +57,17 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Instruction in each execution stage.
         /// </summary>
-        private BitVector32 IFreg, IDreg, EXreg, MEMreg, WBreg;
+        private BitVector32 IFreg, IDreg, EXreg, MEMreg, WBreg, WBDataReg;
 
         /// <summary>
         /// Special register to keep the output from the ALU.
         /// </summary>
         private BitVector32 ALUout;
+
+        /// <summary>
+        /// Register to store the instruction currentyly in execution.
+        /// </summary>
+        private BitVector32 OPreg;
 
         /// <summary>
         /// Memory output.
@@ -134,12 +139,12 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Stages of execution where the CPU might need to wait.
         /// </summary>
-        private bool RStall;
+        private bool RStall, DStall;
 
         /// <summary>
         /// Controls the stopping of the emulation.
         /// </summary>
-        private bool trap0Found = false;
+        private bool trap0Found, stop = false;
 
         /// <summary>
         /// Dictionary that holds what memory address is represented by each label.
@@ -172,7 +177,7 @@ namespace THUMDER.Deluxe
 
         public static void RunFullSimulation()
         {
-            while (!Instance.trap0Found || Instance.PC > Memsize)
+            while (!Instance.stop || Instance.PC >= Memsize)
             {
                 Instance.DoCycle();
             }
@@ -185,16 +190,6 @@ namespace THUMDER.Deluxe
 
         private void DoCycle()
         {
-            WBreg = MEMreg;
-            if (!RStall)   //If the instruction wasn't loaded into memory stall the CPU.
-            {
-                MEMreg = EXreg;
-                EXreg = IDreg;
-                IDreg = IFreg;      //Move instructions to its stage register.
-            }
-            else
-                MEMreg = zeroBits;
-            //this.TickAllUnits();  //If we don't tick the units here, it won't be a segmented processor.
             this.WB();            //We write to registers in the first half of the cycle.
             this.MEM();           //Access the memory if needed.
             this.EX();            //Apply a cycle to all execution units and place results, if available on the output register.

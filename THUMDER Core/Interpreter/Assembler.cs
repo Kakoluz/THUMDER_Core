@@ -52,7 +52,7 @@ namespace THUMDER.Interpreter
                 }
                 if (file[l].Contains(".global"))
                 {
-                    assembly.GlobalLabels.Add(l+1, file[l].Substring(file[l].IndexOf(' ')+1)); //Split label and directive.
+                    assembly.GlobalLabels.Add(l + 1, file[l].Substring(file[l].IndexOf(' ') + 1)); //Split label and directive.
                     file[l] = String.Empty; //Delete line to avoid re processing.
                 }
                 foreach (var item in assembly.GlobalLabels)
@@ -64,16 +64,16 @@ namespace THUMDER.Interpreter
                     }//Update the global labels if there is conflict.
                 }
             }
-            
+
             //Check if there is code segement specified.
-            
+
             if (textSegment == null)
             {
                 throw new ArgumentException("Missing .text directive.\nNo code in the file?");
             }
-            
+
             //if there is code then do a scan in the data segment to get variables.
-            
+
             else if (dataSegement != null)
             {
                 for (int l = (int)dataSegement; l < textSegment; l++)
@@ -90,18 +90,18 @@ namespace THUMDER.Interpreter
             }
 
             //Then check the code syntax.
-            
-            for (int l = (int)textSegment; l < file.Length; l++ )
+
+            for (int l = (int)textSegment; l < file.Length; l++)
             {
-                if (file[l] != String.Empty)
-                    assembly.CodeSegment.Add(DecodeInstruction(file[l], l)); //Check instruction sintax and add them to the assembly.
+                if (file[l].Trim() != String.Empty)
+                    assembly.CodeSegment.Add(DecodeInstruction(file[l].Trim(), l)); //Check instruction sintax and add them to the assembly.
                 if (assembly.Labels.ContainsKey((uint)(l))) //Update the labels to their placement in the segment
                 {
                     string label = assembly.Labels[(uint)l];
                     assembly.Labels.Remove((uint)l);
                     assembly.TextLabels.Add((uint)(assembly.CodeSegment.Count), label);
                 }
-            }            
+            }
             return assembly;
         }
 
@@ -111,7 +111,7 @@ namespace THUMDER.Interpreter
         /// <param name="data">The data line of the text file.</param>
         /// <param name="line">The line number of the text file.</param>
         /// <exception cref="ArgumentException">If its an unknwon data directive.</exception>
-        private static string DecodeData(in string data,in int line)
+        private static string DecodeData(in string data, in int line)
         {
             string[] aux = data.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (!(aux[0].Contains(".align")
@@ -148,12 +148,13 @@ namespace THUMDER.Interpreter
                 return clean.Trim();
             }
         }
-        private static string DecodeInstruction(in string instruction,in int lineCount)
+        private static string DecodeInstruction(in string instruction, in int lineCount)
         {
             string[] cleaned = instruction.Replace(',', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             string decoded = String.Empty;
             int i = 0;
-            for (int j = 0; j < OpCodes.Length; j++)
+            int j = 0;
+            for (j = 0; j < OpCodes.Length; j++)
             {
                 if (OpCodes[j].Name == cleaned[i].ToLower())
                 {
@@ -173,8 +174,6 @@ namespace THUMDER.Interpreter
                                 break;
                             case 'p':
                             case 'P':
-                            case 'd':
-                            case 'D':
                                 if (cleaned[i + x + 1].Trim()[0] is 'r' or 'f')
                                 {
                                     decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(1));
@@ -187,6 +186,15 @@ namespace THUMDER.Interpreter
                                     decoded = string.Concat(decoded, cleaned[i + x + 1].AsSpan(index + 1));
                                 }
                                 else if (cleaned[i + x + 1].Contains('#'))
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('#') + 1)); //Remove # from immediate values if present.
+                                else if (cleaned[i + x + 1].Contains('$'))
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('$') + 1)); //Remove $ from labels if present.
+                                else
+                                    decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(0));
+                                break;
+                            case 'd':
+                            case 'D':
+                                if (cleaned[i + x + 1].Contains('#'))
                                     decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('#') + 1)); //Remove # from immediate values if present.
                                 else if (cleaned[i + x + 1].Contains('$'))
                                     decoded = string.Concat(decoded, " ", cleaned[i + x + 1].AsSpan(cleaned[i + x + 1].IndexOf('$') + 1)); //Remove $ from labels if present.
@@ -219,6 +227,33 @@ namespace THUMDER.Interpreter
             }
             if (decoded == String.Empty)
                 throw new ArgumentException("Invalid instruction \"" + instruction[i] + "\" at line " + lineCount);
+            if (OpCodes[j].Name == "movd"  || OpCodes[j].Name == "addd"   || OpCodes[j].Name == "subd"   ||
+                OpCodes[j].Name == "multd" || OpCodes[j].Name == "divd"   || OpCodes[j].Name == "eqd"    ||
+                OpCodes[j].Name == "ned"   || OpCodes[j].Name == "ltd"    || OpCodes[j].Name == "gtd"    ||
+                OpCodes[j].Name == "led"   || OpCodes[j].Name == "ged"    || OpCodes[j].Name == "cvtf2d" ||
+                OpCodes[j].Name == "cvtd2f"|| OpCodes[j].Name == "cvtd2i" || OpCodes[j].Name == "cvti2d")
+            {
+                string[] aux = decoded.Split();
+                int a = int.Parse(aux[1]);
+                int b = int.Parse(aux[2]);
+                switch (aux[0])
+                {
+                    case "cvtf2d":
+                    case "cvti2d":
+                        if (b % 2 != 0)
+                            throw new ArgumentException("Double numbers need to be placed in pair registers" + "\n at line " + lineCount);
+                        break;
+                    case "cvtd2i":
+                    case "cvtd2f":
+                        if (a % 2 != 0)
+                            throw new ArgumentException("Double numbers need to be placed in pair registers" + "\n at line " + lineCount);
+                        break;
+                    default:
+                        if (a % 2 != 0 || b % 2 != 0)
+                            throw new ArgumentException("Double numbers need to be placed in pair registers" + "\n at line " + lineCount);
+                        break;
+                }
+            }
             return decoded;
         }
     }
