@@ -151,6 +151,8 @@ namespace THUMDER.Deluxe
         /// </summary>
         private static readonly Dictionary<string, uint> labels = new Dictionary<string, uint>();
 
+        private static readonly Dictionary<int, int> Breakpoints = new Dictionary<int, int>();
+
         private SimManager()
         {
             this.alus = new List<ALU>();
@@ -177,7 +179,7 @@ namespace THUMDER.Deluxe
 
         public static void RunFullSimulation()
         {
-            while (!Instance.stop || Instance.PC >= Memsize)
+            while (!Instance.stop && Instance.PC <= Memsize)
             {
                 Instance.DoCycle();
             }
@@ -185,7 +187,86 @@ namespace THUMDER.Deluxe
 
         public static void RunACycle()
         {
-            Instance.DoCycle();
+            if (!Instance.stop && Instance.PC <= Memsize)
+                Instance.DoCycle();
+        }
+        public static void RunUntilBreakpoint()
+        {
+            if (!Instance.stop && Instance.PC <= Memsize)
+            {
+                do
+                {
+                    Instance.DoCycle();
+                } while (!Breakpoints.ContainsKey((int)Instance.PC));
+            }
+        }
+
+        internal static void SetBreakpoint(int address)
+        {
+            Breakpoints.Add(address, 1);
+        }
+
+        internal static void RemoveBreakpoint(int address)
+        {
+            Breakpoints.Remove(address);
+        }
+
+        internal static string PrintRegisters()
+        {
+            string registersText = String.Empty;
+            List<byte> bytes = new List<byte>();
+            double[] ds = new double[16];
+            int j = 0;
+            for (int i = 0; i < 32; i+=2)
+            {
+                bytes.AddRange(BitConverter.GetBytes(Instance.fRegisters[i].Data));
+                bytes.AddRange(BitConverter.GetBytes(Instance.fRegisters[i+1].Data));
+                ds[j++] = BitConverter.ToDouble(bytes.ToArray(), 0);
+                bytes.Clear();
+            }
+            registersText += String.Concat("PC=    0x" + Instance.PC.ToString("X8")                 + "     F0 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[0].Data).ToString("E4") + "    D0 = " + ds[0].ToString("E8") + "\n");
+            registersText += String.Concat("IMAR=  0x" + Instance.IMAR.Data.ToString("X8")          + "     F1 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[1].Data).ToString("E4") + "\n");
+            registersText += String.Concat("IR=    0x" + Instance.IDreg.Data.ToString("X8")         + "     F2 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[2].Data).ToString("E4") + "    D2 = " + ds[1].ToString("E8") + "\n");
+            registersText += String.Concat("A=     0x" + Instance.Afp[0].Data.ToString("X8")        + "     F3 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[3].Data).ToString("E4") + "\n");
+            registersText += String.Concat("AHI=   0x" + Instance.Afp[1].Data.ToString("X8")        + "     F4 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[4].Data).ToString("E4") + "    D4 = " + ds[2].ToString("E8") + "\n");
+            registersText += String.Concat("B=     0x" + Instance.Bfp[0].Data.ToString("X8")        + "     F5 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[5].Data).ToString("E4") + "\n");
+            registersText += String.Concat("BHI=   0x" + Instance.Bfp[1].Data.ToString("X8")        + "     F6 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[6].Data).ToString("E4") + "    D6 = " + ds[3].ToString("E8") + "\n");
+            registersText += String.Concat("BTA=   0x" + zeroBits.Data.ToString("X8")               + "     F7 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[7].Data).ToString("E4") + "\n");
+            registersText += String.Concat("ALU=   0x" + Instance.ALUout.Data.ToString("X8")        + "     F8 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[8].Data).ToString("E4") + "    D8 = " + ds[4].ToString("E8") + "\n");
+            registersText += String.Concat("ALUHI= 0x" + Instance.FPUout[1].Data.ToString("X8")     + "     F9 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[9].Data).ToString("E4") + "\n");
+            registersText += String.Concat("FPSR=  0x" + Instance.FPstatus.Data.ToString("X8")      + "     F10= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[10].Data).ToString("E4") + "    D10= " + ds[5].ToString("E8") + "\n");
+            registersText += String.Concat("DMAR=  0x" + zeroBits.Data.ToString("X8")               + "     F11= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[11].Data).ToString("E4") + "\n");
+            registersText += String.Concat("SDR=   0x" + zeroBits.Data.ToString("X8")               + "     F12= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[12].Data).ToString("E4") + "    D12= " + ds[6].ToString("E8") + "\n");
+            registersText += String.Concat("SDRHI= 0x" + zeroBits.Data.ToString("X8")               + "     F13= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[13].Data).ToString("E4") + "\n");
+            registersText += String.Concat("LDR=   0x" + Instance.LMD[0].Data.ToString("X8")        + "     F14= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[14].Data).ToString("E4") + "    D14= " + ds[7].ToString("E8") + "\n");
+            registersText += String.Concat("LDRHI= 0x" + Instance.LMD[1].Data.ToString("X8")        + "     F15= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[15].Data).ToString("E4") + "\n");
+
+            registersText += String.Concat("R0=    0x" + Instance.Registers[0].Data.ToString("X8")  + "     F16= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[16].Data).ToString("E4") + "    D16= " + ds[8].ToString("E8") + "\n");
+            registersText += String.Concat("R1=    0x" + Instance.Registers[1].Data.ToString("X8")  + "     F17= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[17].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R2=    0x" + Instance.Registers[2].Data.ToString("X8")  + "     F18= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[18].Data).ToString("E4") + "    D18= " + ds[9].ToString("E8") + "\n");
+            registersText += String.Concat("R3=    0x" + Instance.Registers[3].Data.ToString("X8")  + "     F19= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[19].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R4=    0x" + Instance.Registers[4].Data.ToString("X8")  + "     F20= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[20].Data).ToString("E4") + "    D20= " + ds[10].ToString("E8") + "\n");
+            registersText += String.Concat("R5=    0x" + Instance.Registers[5].Data.ToString("X8")  + "     F21= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[21].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R6=    0x" + Instance.Registers[6].Data.ToString("X8")  + "     F22= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[22].Data).ToString("E4") + "    D22= " + ds[11].ToString("E8") + "\n");
+            registersText += String.Concat("R7=    0x" + Instance.Registers[7].Data.ToString("X8")  + "     F23= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[23].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R8=    0x" + Instance.Registers[8].Data.ToString("X8")  + "     F24= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[16].Data).ToString("E4") + "    D24= " + ds[12].ToString("E8") + "\n");
+            registersText += String.Concat("R9=    0x" + Instance.Registers[9].Data.ToString("X8")  + "     F25= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[17].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R10=   0x" + Instance.Registers[10].Data.ToString("X8") + "     F26= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[18].Data).ToString("E4") + "    D26= " + ds[13].ToString("E8") + "\n");
+            registersText += String.Concat("R11=   0x" + Instance.Registers[11].Data.ToString("X8") + "     F27= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[19].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R12=   0x" + Instance.Registers[12].Data.ToString("X8") + "     F28= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[20].Data).ToString("E4") + "    D28= " + ds[14].ToString("E8") + "\n");
+            registersText += String.Concat("R13=   0x" + Instance.Registers[13].Data.ToString("X8") + "     F29= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[21].Data).ToString("E4") + "\n");
+            registersText += String.Concat("R14=   0x" + Instance.Registers[14].Data.ToString("X8") + "     F30= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[22].Data).ToString("E4") + "    D30= " + ds[15].ToString("E8") + "\n");
+            registersText += String.Concat("R15=   0x" + Instance.Registers[15].Data.ToString("X8") + "     F31= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[23].Data).ToString("E4") + "\n");
+            for (int i = 16; i < 32; i++)
+            {
+                registersText += String.Concat("R" + (i).ToString() + "=   0x" + Instance.Registers[i].Data.ToString("X8") + "\n");
+            }
+            return registersText;
+        }
+        
+        internal static string PrintStats()
+        {
+            throw new NotImplementedException();
         }
 
         private void DoCycle()
