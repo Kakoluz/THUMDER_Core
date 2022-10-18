@@ -54,6 +54,7 @@ namespace THUMDER
                                   "F10. Remove breakpoint \n" +
                                   "\n" +
                                   "F11. Print stats \n" +
+                                  "F12. Print Pipeline \n" +
                                   "Q. Exit \n";
 
         /// <summary>
@@ -127,10 +128,6 @@ namespace THUMDER
                     Console.WriteLine(menu);
                     switch (Console.ReadKey(false).Key)
                     {
-                        case ConsoleKey.F1:
-                            Console.Clear();
-                            Console.WriteLine(menu);
-                            break;
                         case ConsoleKey.F5:
                             Console.Clear();
                             SimManager.RunFullSimulation();
@@ -147,12 +144,65 @@ namespace THUMDER
                             Console.Clear();
                             Console.WriteLine(SimManager.PrintRegisters());
 
-                            Console.WriteLine("\n Press any key to return.");
+                            Console.WriteLine("Press any key to return.");
                             Console.ReadKey(false);
                             Console.Clear();
                             break;
                         case ConsoleKey.F4:
-                            //SimManager.MemoryExplorer();
+                            Console.Clear();
+                            Console.WriteLine("Enter the address to read from (Decimal or Hex): ");
+                            string text = Console.ReadLine();
+                            int textnumber;
+                            if (text != null && text.Contains("0x"))
+                            {
+                                text = text.Replace("0x", "");
+                                textnumber = Convert.ToInt32(text, 16);
+                            }
+                            else if (text != null)
+                            {
+                                textnumber = Convert.ToInt32(text);
+                            }
+                            else
+                            {
+                                Console.Clear();
+                                Console.WriteLine("Invalid input.\n" +
+                                                  "Returning to menu");
+                                break;
+                            }
+                            if (textnumber < 4)
+                                textnumber = 4;
+                            else if (textnumber > (SimManager.Memsize - 5))
+                                textnumber = (int)(SimManager.Memsize - 5);
+                            bool quitMemExplorer = false;
+                            Console.Clear();
+                            Console.WriteLine("Memory explorer\n");
+                            Console.WriteLine(String.Format("{0} {1,-12}", "  Address", "  Content"));
+                            int x = Console.GetCursorPosition().Left;
+                            int y = Console.GetCursorPosition().Top;
+                            Console.WriteLine(SimManager.MemoryExplorer(textnumber));
+                            Console.WriteLine("\nNavigate with the arrow keys. Press Q to quit.");
+                            while (!quitMemExplorer)
+                            {
+                                if (textnumber < 4)
+                                    textnumber = 4;
+                                else if (textnumber > (SimManager.Memsize - 5))
+                                    textnumber = (int)(SimManager.Memsize - 5);
+                                Console.SetCursorPosition(x,y);
+                                Console.WriteLine(SimManager.MemoryExplorer(textnumber));
+                                switch (Console.ReadKey(false).Key)
+                                {
+                                    case ConsoleKey.UpArrow:
+                                        ++textnumber;
+                                        break;
+                                    case ConsoleKey.DownArrow:
+                                        --textnumber;
+                                        break;
+                                    case ConsoleKey.Q:
+                                        quitMemExplorer = true;
+                                        break;
+                                }
+                            }
+                            Console.Clear();
                             break;
                         case ConsoleKey.F9:
                             Console.Clear();
@@ -206,8 +256,19 @@ namespace THUMDER
                         case ConsoleKey.F11:
                             SimManager.PrintStats();
                             break;
+                        case ConsoleKey.F12:
+                            Console.Clear();
+                            Console.WriteLine(SimManager.PrintPipeline());
+
+                            Console.WriteLine("Press any key to return.");
+                            Console.ReadKey(false);
+                            Console.Clear();
+                            break;
                         case ConsoleKey.Q:
                             exitFlag = true;
+                            break;
+                        default:
+                            Console.Clear();
                             break;
                     }
                 }               

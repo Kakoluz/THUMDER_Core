@@ -263,10 +263,33 @@ namespace THUMDER.Deluxe
             }
             return registersText;
         }
-        
+
+        internal static string MemoryExplorer(int address)
+        {
+            string output = String.Empty;
+            for(uint i = (uint)(address + 4); i >= address - 4 && i <= Memsize; i--)
+            {
+                output += String.Concat(String.Format("{0}    {1}\n", "0x" + i.ToString("X8").ToUpper(), MemoryManager.Instance.ReadByte(i).ToString("X2").ToUpper()));
+            }
+            return output;
+        }
+
         internal static string PrintStats()
         {
             throw new NotImplementedException();
+        }
+
+        internal static string PrintPipeline()
+        {
+            string output = String.Empty;
+            output += String.Concat("Pipeline stage     Instruction \n" +
+                                    "--------------------------------------\n");
+            output += String.Concat("WB:                 0x" + Instance.WBreg.Data.ToString("X8")  + "\n");
+            output += String.Concat("MEM:                0x" + Instance.MEMreg.Data.ToString("X8") + "\n");
+            output += String.Concat("EX:                 0x" + Instance.OPreg.Data.ToString("X8")  + "\n");
+            output += String.Concat("ID:                 0x" + Instance.IDreg.Data.ToString("X8")  + "\n");
+            output += String.Concat("IF:                 0x" + Instance.IFreg.Data.ToString("X8")  + "\n");
+            return output;
         }
 
         private void DoCycle()
