@@ -240,13 +240,13 @@ namespace THUMDER.Interpreter
                 {
                     case "cvtf2d":
                     case "cvti2d":
-                    case "ld":
                         if (b % 2 != 0)
                             throw new ArgumentException("Double numbers need to be placed in pair registers" + "\n at line " + lineCount);
                         break;
                     case "cvtd2i":
                     case "cvtd2f":
                     case "sd":
+                    case "ld":
                         if (a % 2 != 0)
                             throw new ArgumentException("Double numbers need to be placed in pair registers" + "\n at line " + lineCount);
                         break;
