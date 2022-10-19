@@ -286,8 +286,22 @@ namespace THUMDER.Deluxe
                                     "--------------------------------------\n");
             output += String.Concat("WB:                 0x" + Instance.WBreg.Data.ToString("X8")  + "\n");
             output += String.Concat("MEM:                0x" + Instance.MEMreg.Data.ToString("X8") + "\n");
-            output += String.Concat("EX:                 0x" + Instance.OPreg.Data.ToString("X8")  + "\n");
-            output += String.Concat("ID:                 0x" + Instance.IDreg.Data.ToString("X8")  + "\n");
+            if (Instance.RStall)
+            {
+                output += String.Concat("EX:    (stalled)     0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+            }
+            else
+            {
+                output += String.Concat("EX:                0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+            }
+            if (Instance.DStall)
+            {
+                output += String.Concat("ID:    (stalled)     0x" + Instance.IDreg.Data.ToString("X8") + "\n");
+            }
+            else
+            {
+                output += String.Concat("ID:                 0x" + Instance.IDreg.Data.ToString("X8") + "\n");
+            }
             output += String.Concat("IF:                 0x" + Instance.IFreg.Data.ToString("X8")  + "\n");
             return output;
         }
