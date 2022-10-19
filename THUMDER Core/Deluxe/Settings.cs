@@ -40,7 +40,7 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Number of cicles for a floating point multiplication operation.
         /// </summary>
-        public static int MULDDelay { get; private set; } = 5;
+        public static int MULDelay { get; private set; } = 5;
         /// <summary>
         /// Number of cicles for a floatig point division operation.
         /// </summary>

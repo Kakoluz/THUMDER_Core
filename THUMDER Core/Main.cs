@@ -46,6 +46,8 @@ namespace THUMDER
                                   "F5. Run program \n" +
                                   "F6. Step in \n" +
                                   "F7. Run until breakpoint \n" +
+                                  "R. Reset CPU \n" +
+                                  "L. Reload Program \n" +
                                   "\n" +
                                   "F3. Print registers \n" +
                                   "F4. Memory explorer \n" +
@@ -53,8 +55,8 @@ namespace THUMDER
                                   "F9. Set breakpoint \n" +
                                   "F10. Remove breakpoint \n" +
                                   "\n" +
-                                  "F11. Print stats \n" +
-                                  "F12. Print Pipeline \n" +
+                                  "S. Print stats \n" +
+                                  "P. Print Pipeline \n" +
                                   "Q. Exit \n";
 
         /// <summary>
@@ -253,10 +255,15 @@ namespace THUMDER
                             }
                             break;
                             break;
-                        case ConsoleKey.F11:
-                            SimManager.PrintStats();
+                        case ConsoleKey.S:
+                            Console.Clear();
+                            Console.WriteLine(SimManager.PrintStats());
+                            
+                            Console.WriteLine("Press any key to return.");
+                            Console.ReadKey(false);
+                            Console.Clear();
                             break;
-                        case ConsoleKey.F12:
+                        case ConsoleKey.P:
                             Console.Clear();
                             Console.WriteLine(SimManager.PrintPipeline());
 
@@ -266,6 +273,14 @@ namespace THUMDER
                             break;
                         case ConsoleKey.Q:
                             exitFlag = true;
+                            break;
+                        case ConsoleKey.R:
+                            Console.Clear();
+                            SimManager.Restart();
+                            break;
+                        case ConsoleKey.L:
+                            Console.Clear();
+                            SimManager.Reset();
                             break;
                         default:
                             Console.Clear();

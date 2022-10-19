@@ -4,6 +4,8 @@ using System.Text;
 using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Reflection.Metadata.Ecma335;
+using System.Reflection.Metadata;
+using System.ComponentModel;
 
 namespace THUMDER.Deluxe
 {
@@ -147,10 +149,31 @@ namespace THUMDER.Deluxe
         private bool trap0Found, stop = false;
 
         /// <summary>
+        /// Stalls stats counters.
+        /// </summary>
+        public uint decodedInstructions { get; private set; }
+        public uint LDStalls { get; private set; }
+        public uint JumpStalls { get; private set; }
+        public uint fpStalls { get; private set; }
+        public uint WAWStalls { get; private set; }
+        public uint StructuralStalls { get; private set; }
+        public uint ControlStalls { get; private set; }
+        public uint JumpsTaken { get; private set; }
+        public uint JumpsNotTaken { get; private set; }
+        public uint MemLoads { get; private set; }
+        public uint MemStores { get; private set; }
+        public uint fpAddCount { get; private set; }
+        public uint fpMulCount { get; private set; }
+        public uint fpDivCount { get; private set; }
+
+        /// <summary>
         /// Dictionary that holds what memory address is represented by each label.
         /// </summary>
         private static readonly Dictionary<string, uint> labels = new Dictionary<string, uint>();
 
+        /// <summary>
+        /// Dictionary that holds breakpoints.
+        /// </summary>
         private static readonly Dictionary<int, int> Breakpoints = new Dictionary<int, int>();
 
         private SimManager()
@@ -276,7 +299,59 @@ namespace THUMDER.Deluxe
 
         internal static string PrintStats()
         {
-            throw new NotImplementedException();
+            uint instructionsPipeline = 0;
+            if (Instance.IFreg.Data != zeroBits.Data)
+                instructionsPipeline++;
+            if (Instance.IDreg.Data != zeroBits.Data)
+                instructionsPipeline++;
+            if (Instance.OPreg.Data != zeroBits.Data)
+                instructionsPipeline++;
+            if (Instance.MEMreg.Data != zeroBits.Data)
+                instructionsPipeline++;
+            if (Instance.WBreg.Data != zeroBits.Data)
+                instructionsPipeline++;
+
+            string output = String.Empty;
+
+            output += String.Concat("Total: \n   ");
+            output += String.Concat(Instance.Cycles + " Cycles executed \n   ");
+            output += String.Concat("ID Executed by: " + Instance.decodedInstructions + " Instructions \n   ");
+            output += String.Concat(instructionsPipeline + " Instructions currently in the pipeline \n   ");
+
+            output += String.Concat("\nHardware configuration: \n   ");
+            output += String.Concat("Memory size: " + Memsize + " Bytes \n   ");
+            output += String.Concat("faddEX-Stages: " + ADDUnits + ", required Cycles: " + ADDDelay + "\n   ");
+            output += String.Concat("fmulEX-Stages: " + MULUnits + ", required Cycles: " + MULDelay + "\n   ");
+            output += String.Concat("fdivEX-Stages: " + DIVUnits + ", required Cycles: " + DIVDelay + "\n   ");
+            output += String.Concat("Forwarding enabled: " + Forwarding + "\n");
+
+            output += String.Concat("\n Stalls: \n   ");
+            output += String.Concat("RAW stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls).ToString() + "\n      ");
+            output += String.Concat("LD stalls: " + Instance.LDStalls + "\n      ");
+            output += String.Concat("Branch/Jump stalls: " + Instance.JumpStalls + "\n      ");
+            output += String.Concat("Floating Point stalls: " + Instance.fpStalls + "\n   ");
+            output += String.Concat("WAW stalls: " + Instance.WAWStalls + "\n   ");
+            output += String.Concat("Structural stalls: " + Instance.StructuralStalls + "\n   ");
+            output += String.Concat("Control stalls: " + Instance.ControlStalls + "\n   ");
+            output += String.Concat("Total stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls + Instance.WAWStalls + Instance.StructuralStalls + Instance.ControlStalls).ToString() + "\n");
+
+            output += String.Concat("\nConditional Branches: \n   ");
+            output += String.Concat("Total: " + (Instance.JumpsTaken + Instance.JumpsNotTaken).ToString() + "\n      ");
+            output += String.Concat("Taken: " + Instance.JumpsTaken + "\n      ");
+            output += String.Concat("Not taken: " + Instance.JumpsNotTaken + "\n");
+
+            output += String.Concat("\nLoad/Store Instructions: \n   ");
+            output += String.Concat("Total: " + (Instance.MemLoads + Instance.MemStores).ToString() + "\n      ");
+            output += String.Concat("Loads: " + Instance.MemLoads + "\n      ");
+            output += String.Concat("Stores: " + Instance.MemStores + "\n");
+
+            output += String.Concat("\nFloating Point Stage Instructions: \n   ");
+            output += String.Concat("Total: " + (Instance.fpAddCount + Instance.fpMulCount + Instance.fpDivCount).ToString() + "\n      ");
+            output += String.Concat("Additions: " + Instance.fpAddCount + "\n      ");
+            output += String.Concat("Multiplications: " + Instance.fpMulCount + "\n      ");
+            output += String.Concat("Divisions: " + Instance.fpDivCount + "\n");
+
+            return output;
         }
 
         internal static string PrintPipeline()
@@ -288,15 +363,15 @@ namespace THUMDER.Deluxe
             output += String.Concat("MEM:                0x" + Instance.MEMreg.Data.ToString("X8") + "\n");
             if (Instance.RStall)
             {
-                output += String.Concat("EX:    (stalled)     0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+                output += String.Concat("EX:    (stalled)    0x" + Instance.EXreg.Data.ToString("X8") + "\n");
             }
             else
             {
-                output += String.Concat("EX:                0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+                output += String.Concat("EX:                 0x" + Instance.EXreg.Data.ToString("X8") + "\n");
             }
             if (Instance.DStall)
             {
-                output += String.Concat("ID:    (stalled)     0x" + Instance.IDreg.Data.ToString("X8") + "\n");
+                output += String.Concat("ID:    (stalled)    0x" + Instance.IDreg.Data.ToString("X8") + "\n");
             }
             else
             {
@@ -341,8 +416,23 @@ namespace THUMDER.Deluxe
         public static void Restart()
         {
             Instance.trap0Found = false;
+            Instance.stop = false;
+            Instance.ClearPipeline();
             Instance.PC = Instance.startingPC;
             Instance.Cycles = 0;
+            Instance.LDStalls = 0;
+            Instance.JumpStalls = 0;
+            Instance.fpStalls = 0;
+            Instance.WAWStalls = 0;
+            Instance.StructuralStalls = 0;
+            Instance.ControlStalls = 0;
+            Instance.JumpsTaken = 0;
+            Instance.JumpsNotTaken = 0;
+            Instance.MemLoads = 0;
+            Instance.MemStores = 0;
+            Instance.fpAddCount = 0;
+            Instance.fpMulCount = 0;
+            Instance.fpDivCount = 0;
         }
 
         /// <summary>
@@ -350,8 +440,10 @@ namespace THUMDER.Deluxe
         /// </summary>
         public static void Reset()
         {
+            ASM lastProgram = Instance.loadedProgram;
             Instance = new SimManager();
-            LoadProgram(Instance.loadedProgram);
+            labels.Clear();
+            LoadProgram(lastProgram);
         }
 
         struct MemAccess

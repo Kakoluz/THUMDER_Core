@@ -87,7 +87,10 @@ namespace THUMDER.Deluxe
             if (RStall)
                 DStall = true;
             if (!DStall)
+            {
+                decodedInstructions++;
                 EXreg = IDreg;
+            }
         }
         
         /// <summary>
@@ -124,6 +127,7 @@ namespace THUMDER.Deluxe
                     {
                         MemoryManager.Instance.WriteByte(address++, b);
                     }
+                    Instance.MemStores++;
                 }
                 else
                 {
@@ -152,6 +156,7 @@ namespace THUMDER.Deluxe
                             LMD[1] = new BitVector32(BitConverter.ToInt32(value, 4));
                             break;
                     }
+                    Instance.MemLoads++;
                 }
             }
             if (Condition)
@@ -221,6 +226,7 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void ClearPipeline()
         {
+            JumpStalls++;
             IDreg = zeroBits; //Clear the execution pipeline
             IFreg = zeroBits;
             DStall = false;
@@ -714,31 +720,49 @@ namespace THUMDER.Deluxe
             {
                 case 2: //JUMPS AND BRANCHES
                     Condition = true;
+                    JumpsTaken++;
                     break;
                 case 3:
                     Condition = true;
+                    JumpsTaken++;
                     break;
                 case 4:
                     if ((OPreg[opSection] == 0 && OPreg[rdSection] == rs1) || (OPreg[opSection] != 0 && OPreg[rs2Section] == rs1))
                         if (!Forwarding)
                             return false;
                     Condition = A.Data == 0;
+                    if (Condition)
+                        JumpsTaken++;
+                    else
+                        JumpsNotTaken++;
                     break;
                 case 5:
                     if ((OPreg[opSection] == 0 && OPreg[rdSection] == rs1) || (OPreg[opSection] != 0 && OPreg[rs2Section] == rs1))
                         if (!Forwarding)
                             return false;
                     Condition = A.Data != 0;
+                    if (Condition)
+                        JumpsTaken++;
+                    else
+                        JumpsNotTaken++;
                     break;
                 case 6:
                     if (comparingFP)
                         return false;
                     Condition = FPstatus.Data == 1;
+                    if (Condition)
+                        JumpsTaken++;
+                    else
+                        JumpsNotTaken++;
                     break;
                 case 7:
                     if (comparingFP)
                         return false;
                     Condition = FPstatus.Data == 0;
+                    if (Condition)
+                        JumpsTaken++;
+                    else
+                        JumpsNotTaken++;
                     break;
                 case 16: //RFE
                          //UNIMPLEMENTED
@@ -751,6 +775,7 @@ namespace THUMDER.Deluxe
                     break;
                 case 19:
                     Condition = true;
+                    JumpsTaken++;
                     break;
             }
             return true;
@@ -1101,6 +1126,7 @@ namespace THUMDER.Deluxe
                                 if (!fpu.Busy)
                                 {
                                     fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(fRegisters[EXreg[rs1Section]].Data), BitConverter.Int32BitsToSingle(fRegisters[EXreg[rs2Section]].Data), EXreg[functSection], ADDDelay);
+                                    fpAddCount++;
                                     break;
                                 }
                                 if (adds.Last() == fpu)
@@ -1122,6 +1148,7 @@ namespace THUMDER.Deluxe
                                 {
                                     byte[] auxArr = aux.ToArray();
                                     fpu.LoadValues(EXreg[rdSection], BitConverter.ToDouble(auxArr, 0), BitConverter.ToDouble(auxArr, 8), EXreg[functSection], ADDDelay);
+                                    fpAddCount++;
                                     break;
                                 }
                                 if (adds.Last() == fpu)
@@ -1135,7 +1162,8 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDelay);
+                                    fpMulCount++;
                                     break;
                                 }
                                 if (muls.Last() == fpu)
@@ -1150,6 +1178,7 @@ namespace THUMDER.Deluxe
                                 if (!fpu.Busy)
                                 {
                                     fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], DIVDelay);
+                                    fpMulCount++;
                                     break;
                                 }
                                 if (divs.Last() == fpu)
@@ -1169,7 +1198,8 @@ namespace THUMDER.Deluxe
                                 if (!fpu.Busy)
                                 {
                                     byte[] auxArr = aux.ToArray();
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.ToDouble(auxArr, 0), BitConverter.ToDouble(auxArr, 8), EXreg[functSection], MULDDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.ToDouble(auxArr, 0), BitConverter.ToDouble(auxArr, 8), EXreg[functSection], MULDelay);
+                                    fpMulCount++;
                                     break;
                                 }
                                 if (muls.Last() == fpu)
@@ -1190,6 +1220,7 @@ namespace THUMDER.Deluxe
                                 {
                                     byte[] auxArr = aux.ToArray();
                                     fpu.LoadValues(EXreg[rdSection], BitConverter.ToDouble(auxArr, 0), BitConverter.ToDouble(auxArr, 8), EXreg[functSection], DIVDelay);
+                                    fpDivCount++;
                                     break;
                                 }
                                 if (divs.Last() == fpu)
@@ -1204,7 +1235,8 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDelay);
+                                    fpMulCount++;
                                     break;
                                 }
                                 if (muls.Last() == fpu)
@@ -1220,6 +1252,7 @@ namespace THUMDER.Deluxe
                                 if (!fpu.Busy)
                                 {
                                     fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], DIVDelay);
+                                    fpDivCount++;
                                     break;
                                 }
                                 if (divs.Last() == fpu)
