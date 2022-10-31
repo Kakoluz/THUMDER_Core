@@ -1,6 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Security.Cryptography;
 
 namespace THUMDER.Deluxe
 {

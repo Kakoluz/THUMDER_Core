@@ -1,7 +1,4 @@
-﻿using System;
-using System.Security.Cryptography.X509Certificates;
-
-namespace THUMDER.Interpreter
+﻿namespace THUMDER.Interpreter
 {
     public static partial class Assembler
     {

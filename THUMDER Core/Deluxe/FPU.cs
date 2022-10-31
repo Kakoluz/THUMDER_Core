@@ -1,8 +1,4 @@
-﻿using System.Collections.Specialized;
-using System.Runtime.Intrinsics.X86;
-using System.Security.Cryptography;
-
-namespace THUMDER.Deluxe
+﻿namespace THUMDER.Deluxe
 {
     internal class FPU
     {
