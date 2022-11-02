@@ -1,23 +1,144 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Runtime.Intrinsics.X86;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Specialized;
+using THUMDER.Interpreter;
 
 namespace THUMDER.Deluxe
 {
     internal sealed partial class SimManager
     {
-        private BitVector32 A = new BitVector32(0);
-        private BitVector32[] Afp = new BitVector32[2];
-        private BitVector32 B = new BitVector32(0);
-        private BitVector32[] Bfp = new BitVector32[2];
-        private BitVector32 Imm = new BitVector32(0);
+        /// <summary>
+        /// Program Counter
+        /// </summary>
+        private uint PC, startingPC;
+
+        /// <summary>
+        /// Assembly currently loaded in memory.
+        /// </summary>
+        private ASM loadedProgram;
+
+        /// <summary>
+        /// List of Arithmetic Logical Units.
+        /// </summary>
+        private List<ALU> alus;
+
+        /// <summary>
+        /// List of Floating Point add units.
+        /// </summary>
+        private List<FPU> adds;
+
+        /// <summary>
+        /// List of Floating Point multiply units.
+        /// </summary>
+        private List<FPU> muls;
+
+        /// <summary>
+        /// List of Floating Point divisor units.
+        /// </summary>
+        private List<FPU> divs;
+
+        /// <summary>
+        /// General Purpose 32 bits registers.
+        /// </summary>
+        private BitVector32[] Registers;
+
+        /// <summary>
+        /// Floating point 32 bits registers.
+        /// </summary>
+        private BitVector32[] fRegisters;
+
+        /// <summary>
+        /// Instruction Memory Address Register.
+        /// </summary>
+        private BitVector32 IMAR;
+
+        /// <summary>
+        /// Data Memory Address Register.
+        /// </summary>
+        private BitVector32 DMAR;
+
+        /// <summary>
+        /// Instruction in each execution stage.
+        /// </summary>
+        private BitVector32 IFreg, IDreg, EXreg, MEMreg, WBreg;
+
+        /// <summary>
+        /// Register to store the instruction currentyly in execution.
+        /// </summary>
+        private BitVector32 OPreg;
+
+        /// <summary>
+        /// Loaded Memory Data.
+        /// </summary>
+        private BitVector32[] LMD;
+
+        /// <summary>
+        /// Saved Data Register
+        /// </summary>
+        private BitVector32[] SDR;
+
+        /// <summary>
+        /// Special register to keep the output from EX.
+        /// </summary>
+        private BitVector32[] ALUout, MEMDataReg, WBDataReg; //Size of 2 to store doubles.
+
+        /// <summary>
+        /// Floating point status register.
+        /// </summary>
+        private BitVector32 FPstatus;
+
+        /// <summary>
+        /// Register to store jump conditions.
+        /// </summary>
+        private bool Condition;
+
+        /// <summary>
+        /// The number of cycles runned in the curtent emulation.
+        /// </summary>
+        public ulong Cycles { get; private set; }
+
+        /// <summary>
+        /// Lists of pending memory accesses.
+        /// </summary>
+        private List<MemAccess?> PedingMemAccess = new List<MemAccess?>();
+
+        /// <summary>
+        /// A list that holds if a register is being written by an instruction.
+        /// </summary>
+        private byte[] UsedRegisters = new byte[32];
+
+        /// <summary>
+        /// A list that holds if a floatin point register is being written by an instruction.
+        /// </summary>
+        private byte[] UsedfRegisters = new byte[32];
+
+        /// <summary>
+        /// Instruction arguments.
+        /// </summary>
+        private int IDOpcode, rd, rs2, rs1, funct, shamt, address;
+
+        /// <summary>
+        /// Stages of execution where the CPU might need to wait.
+        /// </summary>
+        private bool RStall, DStall;
+
+        /// <summary>
+        /// Controls the stopping of the emulation.
+        /// </summary>
+        private bool trap0Found, stop = false;
+
+        /// <summary>
+        /// Source register A
+        /// </summary>
+        private BitVector32[] A = new BitVector32[2];
+
+        /// <summary>
+        /// Source register B
+        /// </summary>
+        private BitVector32[] B = new BitVector32[2];
+        /// <summary>
+        /// Are we doing a fp comparison?
+        /// </summary>
         private bool comparingFP = false;
+        
         /// <summary>
         /// Reads the PC address and fetches de data on that memory address.
         /// </summary>
@@ -103,11 +224,14 @@ namespace THUMDER.Deluxe
             if (PedingMemAccess.Count <= 1)
                 PedingMemAccess.Add(null); //Put a null memory access to have it indicate that there is no pending memory access and next insctruction can be taken.
             if (RStall) //IF EX is stalled, pass 0 to the next stage.
+            {
                 MEMreg = zeroBits;
+                ++fpStalls;
+            }
             if (Condition)
             {
-                PC = (uint)ALUout.Data; //Move it back to EX, so it reads the actual value it needs. A bit of a hack, but needed.
-                ALUout = zeroBits;
+                PC = (uint)ALUout[0].Data; //Moved it back to EX, so it reads the actual value it needs. A bit of a hack, but needed.
+                ALUout = zeroBitsDouble;
                 Condition = false;
             }
         }
@@ -117,6 +241,7 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void MEM()
         {
+            MEMDataReg = ALUout;
             if (PedingMemAccess[0] != null)
             {
                 MemAccess wb = (MemAccess)PedingMemAccess[0];
@@ -127,6 +252,9 @@ namespace THUMDER.Deluxe
                     {
                         MemoryManager.Instance.WriteByte(address++, b);
                     }
+                    SDR[0] = new BitVector32(BitConverter.ToInt32(wb.Content, 0));
+                    if (wb.Content.Length > 3)
+                        SDR[1] = new BitVector32(BitConverter.ToInt32(wb.Content, 4));
                     Instance.MemStores++;
                 }
                 else
@@ -165,7 +293,6 @@ namespace THUMDER.Deluxe
                 ClearPipeline();
             }
             PedingMemAccess.RemoveAt(0);
-            WBDataReg = ALUout; //WE need this register to avoid doing a wb on the next calculated value. FPU is fine as it doesn't stores addresses
             WBreg = MEMreg;
             MEMreg = zeroBits;
         }
@@ -175,34 +302,31 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void WB()
         {
+            WBDataReg = MEMDataReg;
             switch (WBreg[opSection])
             {
                 case 0: //Wirte Reg-Reg
                     if (WBreg[functSection] != 0)
                     {
-                        Registers[WBreg[rdSection]] = WBDataReg;
+                        Registers[WBreg[rdSection]] = WBDataReg[0];
                         UsedRegisters[WBreg[rdSection]] = 0;
                     }
-                    //else
-                    //{
-                    //    ALUout = zeroBits;
-                    //}
                     break;
                 case 17:
                     stop = true;
                     break;
                 case > 7 and < 16: //Wirte Reg-imm
                 case > 19 and < 32:
-                    Registers[WBreg[rs2Section]] = WBDataReg;
+                    Registers[WBreg[rs2Section]] = WBDataReg[0];
                     UsedRegisters[WBreg[rs2Section]] = 0;
                     break;
                 case 1: //Wirte Reg-Reg fp
                     if (WBreg[functSection] > 15 && WBreg[functSection] is 22 or 23)
                     {
-                        fRegisters[WBreg[rdSection]] = FPUout[0];
+                        fRegisters[WBreg[rdSection]] = ALUout[0];
                         UsedRegisters[WBreg[rdSection]] = 0;
-                        if (FPUout[1].Data != 0)
-                            fRegisters[WBreg[rdSection] + 1] = FPUout[1];
+                        if (ALUout[1].Data != 0)
+                            fRegisters[WBreg[rdSection] + 1] = ALUout[1];
                     }
                     break;
                 case > 32 and < 38: //Wirte loaded from meory
@@ -251,10 +375,10 @@ namespace THUMDER.Deluxe
                     int? output = a.GetValue(out _);
                     if (output != null)
                     {
-                        ALUout = new BitVector32((int)output);
+                        ALUout[0] = new BitVector32((int)output);
                         MEMreg = OPreg;
                     }
-                    break;
+                    return;
                 }
             }
             foreach (FPU a in adds)
@@ -269,7 +393,7 @@ namespace THUMDER.Deluxe
                         BitVector32[] aux = new BitVector32[2];
                         aux[0] = new BitVector32(BitConverter.ToInt32(outBytes, 0));
                         aux[1] = new BitVector32(BitConverter.ToInt32(outBytes, 4));
-                        FPUout = aux;
+                        ALUout = aux;
                         MEMreg = OPreg;
                     }
                     else if (dest >= 33)
@@ -292,7 +416,7 @@ namespace THUMDER.Deluxe
                         BitVector32[] aux = new BitVector32[2];
                         aux[0] = new BitVector32(BitConverter.ToInt32(outBytes, 0));
                         aux[1] = new BitVector32(BitConverter.ToInt32(outBytes, 4));
-                        FPUout = aux;
+                        ALUout = aux;
                         MEMreg = OPreg;
                     }
                     return; //Unload only 1 fp unit per cycle.
@@ -309,7 +433,7 @@ namespace THUMDER.Deluxe
                         BitVector32[] aux = new BitVector32[2];
                         aux[0] = new BitVector32(BitConverter.ToInt32(outBytes, 0));
                         aux[1] = new BitVector32(BitConverter.ToInt32(outBytes, 4));
-                        FPUout = aux;
+                        ALUout = aux;
                         MEMreg = OPreg;
                     }
                     return; //Unload only 1 fp unit per cycle.
@@ -341,26 +465,16 @@ namespace THUMDER.Deluxe
         /// <returns>If the instruction was corretly loaded.</returns>
         private bool LoadInstruction()
         {
-            A = new BitVector32(0);
-            Afp = new BitVector32[2];
-            B = new BitVector32(0);
-            Bfp = new BitVector32[2];
-            Imm = new BitVector32(address);
-            if (rs1 < 33)
+            A[0] = new BitVector32(Registers[rs1].Data);
+            A[1] = zeroBits;
+            if (IDOpcode == 1)
             {
-                A = new BitVector32(Registers[rs1].Data);
-                Afp[0] = new BitVector32(fRegisters[rs1].Data);
-                Afp[1] = new BitVector32(fRegisters[rs1].Data + 1);
-            }
-            if (rs2 < 33)
-            {
-                B = new BitVector32(Registers[rs2].Data);
-                Bfp[0] = new BitVector32(fRegisters[rs2].Data);
-                Bfp[1] = new BitVector32(fRegisters[rs2].Data + 1);
+                A[0] = new BitVector32(fRegisters[rs1].Data);
+                A[1] = new BitVector32(fRegisters[rs1].Data + 1);
             }
             if (shamt != 0)
             {
-                B = new BitVector32(MemoryManager.Instance.ReadWord((uint)(rs2 + shamt)));
+                B[0] = new BitVector32(MemoryManager.Instance.ReadWord((uint)(rs2 + shamt)));
             }
             if ((IDOpcode is 1 or 0) || (IDOpcode is > 7 and < 40) || (IDOpcode is 4 or 5)) //first check the if instruction will use registers.
             {
@@ -375,14 +489,14 @@ namespace THUMDER.Deluxe
                             if (WBreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    A = LMD[0];
+                                    A = LMD;
                                 else
                                     return false;
                             }
                             else if (WBreg[rs2Section] == rs2)
                             {
                                 if (Forwarding)
-                                    B = LMD[0];
+                                    B = LMD;
                                 else 
                                     return false;
                             }
@@ -392,7 +506,7 @@ namespace THUMDER.Deluxe
                             if (WBreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    A = LMD[0];
+                                    A = LMD;
                                 else
                                     return false;
                             }
@@ -402,14 +516,14 @@ namespace THUMDER.Deluxe
                             if (WBreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    Afp = LMD;
+                                    A = LMD;
                                 else
                                     return false;
                             }
                             else if (WBreg[rs2Section] == rs2)
                             {
                                 if (Forwarding)
-                                    Bfp = LMD;
+                                    B = LMD;
                                 else
                                     return false;
                             }
@@ -482,14 +596,14 @@ namespace THUMDER.Deluxe
                             if (WBreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    Afp = FPUout;
+                                    A = ALUout;
                                 else
                                     return false;
                             }
                             else if (WBreg[rs2Section] == rs2)
                             {
                                 if (Forwarding)
-                                    Bfp = FPUout;
+                                    B = ALUout;
                                 else
                                     return false;
                             }
@@ -530,21 +644,21 @@ namespace THUMDER.Deluxe
                             }
                         }
                     }
-                    else if (MEMreg[opSection] == 0 && MEMreg[functSection] != 0) //if its an operation pending to be WB
+                    else if (MEMreg[opSection] == 0 && MEMreg[functSection] != 0) //if its an operation that just got out of EX
                     {
                         if (IDOpcode == 0 && funct != 0) // Our instruction is ALU?
                         {
                             if (MEMreg[rdSection] == rs1)
                             {
                                 if (Forwarding)
-                                    A = ALUout;
+                                    A[0] = ALUout[0];
                                 else
                                     return false;
                             }
                             else if (MEMreg[rdSection] == rs2)
                             {
                                 if (Forwarding)
-                                    B = ALUout;
+                                    B[0] = ALUout[0];
                                 else
                                     return false;
                             }
@@ -554,7 +668,7 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rdSection] == rs1)
                             {
                                 if (Forwarding)
-                                    A = ALUout;
+                                    A[0] = ALUout[0];
                                 else
                                     return false;
                             }
@@ -567,14 +681,14 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    A = ALUout;
+                                    A[0] = ALUout[0];
                                 else
                                     return false;
                             }
                             else if (MEMreg[rs2Section] == rs2)
                             {
                                 if (Forwarding)
-                                    B = ALUout;
+                                    B[0] = ALUout[0];
                                 else
                                     return false;
                             }
@@ -584,7 +698,7 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    A = ALUout;
+                                    A[0] = ALUout[0];
                                 else
                                     return false;
                             }
@@ -597,14 +711,14 @@ namespace THUMDER.Deluxe
                             if (MEMreg[rs2Section] == rs1)
                             {
                                 if (Forwarding)
-                                    Afp = FPUout;
+                                    A = ALUout;
                                 else
                                     return false;
                             }
                             else if (MEMreg[rs2Section] == rs2)
                             {
                                 if (Forwarding)
-                                    Bfp = FPUout;
+                                    B = ALUout;
                                 else
                                     return false;
                             }
@@ -730,7 +844,7 @@ namespace THUMDER.Deluxe
                     if ((OPreg[opSection] == 0 && OPreg[rdSection] == rs1) || (OPreg[opSection] != 0 && OPreg[rs2Section] == rs1))
                         if (!Forwarding)
                             return false;
-                    Condition = A.Data == 0;
+                    Condition = A[0].Data == 0;
                     if (Condition)
                         JumpsTaken++;
                     else
@@ -740,7 +854,7 @@ namespace THUMDER.Deluxe
                     if ((OPreg[opSection] == 0 && OPreg[rdSection] == rs1) || (OPreg[opSection] != 0 && OPreg[rs2Section] == rs1))
                         if (!Forwarding)
                             return false;
-                    Condition = A.Data != 0;
+                    Condition = A[0].Data != 0;
                     if (Condition)
                         JumpsTaken++;
                     else
@@ -786,257 +900,6 @@ namespace THUMDER.Deluxe
             bool success = true;
             BitVector32[] arr = new BitVector32[2]; //Aux vector
             List<byte> aux = new List<byte>();
-            if ((EXreg[opSection] is 1 or 0) || EXreg[opSection] is > 7 and < 40 || EXreg[opSection] is 5 or 6) //first check the instruction if it will use registers.
-            {
-                if (!(EXreg[opSection] is 0 && EXreg[functSection] is 0)) //Check if its a nop.
-                {
-                    /// Check the instruction in WB for conflict or data forwarding.
-                    #region WBForwarding
-                    if (WBreg[opSection] is > 32 and < 40) // First we forward loads from WB.
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = LMD[0];
-                                else
-                                    return false;
-                            }
-                            else if (WBreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    B = LMD[0];
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || IDOpcode is 4 or 5) // Is an I operation?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = LMD[0];
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] == 1) // Is it a float op?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    Afp = LMD;
-                                else
-                                    return false;
-                            }
-                            else if (WBreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    Bfp = LMD;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    else if (WBreg[opSection] == 0 && WBreg[functSection] != 0) //if its an operation pending to be WB
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (WBreg[rdSection] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = WBDataReg;
-                                else
-                                    return false;
-                            }
-                            else if (WBreg[rdSection] == rs2)
-                            {
-                                if (Forwarding)
-                                    B = WBDataReg;
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || EXreg[opSection] is 4 or 5) // Is an I operation?
-                        {
-                            if (WBreg[rdSection] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = WBDataReg;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    else if (WBreg[opSection] is > 7 and < 32) //If its a I operation pending.
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = WBDataReg;
-                                else
-                                    return false;
-                            }
-                            else if (WBreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    B = WBDataReg;
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || EXreg[opSection] is 4 or 5) // Is an I operation?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = WBDataReg;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    else if (WBreg[opSection] == 1) //If its a float operation
-                    {
-                        if (EXreg[opSection] == 1) // Is it a float op?
-                        {
-                            if (WBreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    Afp = FPUout;
-                                else
-                                    return false;
-                            }
-                            else if (WBreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    Bfp = FPUout;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    #endregion
-                    /// Now do the same checks for MEM stage.
-                    #region MEMForwarding
-                    else if (MEMreg[opSection] is > 32 and < 40) // First we check for loads.
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                return false;
-                            }
-                            else if (MEMreg[rs2Section] == rs2)
-                            {
-                                return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || EXreg[opSection] is 4 or 5) // Is an I operation?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                return false;
-                            }
-                        }
-                        else if (EXreg[opSection] == 1 && MEMreg[opSection] is 38 or 39) // Is it a float op?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                return false;
-                            }
-                            else if (MEMreg[rs2Section] == rs2)
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    else if (MEMreg[opSection] == 0 && MEMreg[functSection] != 0) //if its an operation pending to be WB
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (MEMreg[rdSection] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = ALUout;
-                                else
-                                    return false;
-                            }
-                            else if (MEMreg[rdSection] == rs2)
-                            {
-                                if (Forwarding)
-                                    B = ALUout;
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || EXreg[opSection] is 4 or 5) // Is an I operation?
-                        {
-                            if (MEMreg[rdSection] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = ALUout;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    else if (MEMreg[opSection] is > 7 and < 32) //If its a I operation pending.
-                    {
-                        if (EXreg[opSection] == 0) // Our instruction is ALU?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = ALUout;
-                                else
-                                    return false;
-                            }
-                            else if (MEMreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    B = ALUout;
-                                else
-                                    return false;
-                            }
-                        }
-                        else if (EXreg[opSection] is > 7 and < 32 || EXreg[opSection] is 4 or 5) // Is an I operation?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    A = ALUout;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    else if (MEMreg[opSection] == 1) //If its a float operation
-                    {
-                        if (EXreg[opSection] == 1) // Is it a float op?
-                        {
-                            if (MEMreg[rs2Section] == rs1)
-                            {
-                                if (Forwarding)
-                                    Afp = FPUout;
-                                else
-                                    return false;
-                            }
-                            else if (MEMreg[rs2Section] == rs2)
-                            {
-                                if (Forwarding)
-                                    Bfp = FPUout;
-                                else
-                                    return false;
-                            }
-                        }
-                    }
-                    #endregion
-                }
-            }
             switch (EXreg[opSection])
             {
                 case 1:
@@ -1138,10 +1001,10 @@ namespace THUMDER.Deluxe
                         case 4: //ADDD
                         case 5: //SUBD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[1].Data));
                             foreach (FPU fpu in adds)
                             {
                                 if (!fpu.Busy)
@@ -1162,7 +1025,7 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(A[0].Data), BitConverter.Int32BitsToSingle(B[1].Data), EXreg[functSection], MULDelay);
                                     fpMulCount++;
                                     break;
                                 }
@@ -1177,7 +1040,7 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], DIVDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(A[0].Data), BitConverter.Int32BitsToSingle(B[1].Data), EXreg[functSection], DIVDelay);
                                     fpMulCount++;
                                     break;
                                 }
@@ -1189,10 +1052,10 @@ namespace THUMDER.Deluxe
                             break;
                         case 6: //MULTD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[1].Data));
                             foreach (FPU fpu in muls)
                             {
                                 if (!fpu.Busy)
@@ -1210,10 +1073,10 @@ namespace THUMDER.Deluxe
                             break;
                         case 7: //DIVD
                             aux.Clear();
-                            aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[0].Data));
-                            aux.AddRange(BitConverter.GetBytes(Bfp[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(A[1].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[0].Data));
+                            aux.AddRange(BitConverter.GetBytes(B[1].Data));
                             foreach (FPU fpu in divs)
                             {
                                 if (!fpu.Busy)
@@ -1235,7 +1098,7 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], MULDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(A[0].Data), BitConverter.Int32BitsToSingle(B[1].Data), EXreg[functSection], MULDelay);
                                     fpMulCount++;
                                     break;
                                 }
@@ -1251,7 +1114,7 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[1].Data), EXreg[functSection], DIVDelay);
+                                    fpu.LoadValues(EXreg[rdSection], BitConverter.Int32BitsToSingle(A[0].Data), BitConverter.Int32BitsToSingle(B[1].Data), EXreg[functSection], DIVDelay);
                                     fpDivCount++;
                                     break;
                                 }
@@ -1271,7 +1134,7 @@ namespace THUMDER.Deluxe
                             {
                                 if (!fpu.Busy)
                                 {
-                                    fpu.LoadValues(33, BitConverter.Int32BitsToSingle(Afp[0].Data), BitConverter.Int32BitsToSingle(Bfp[0].Data), EXreg[functSection], 1);
+                                    fpu.LoadValues(33, BitConverter.Int32BitsToSingle(A[0].Data), BitConverter.Int32BitsToSingle(B[0].Data), EXreg[functSection], 1);
                                     comparingFP = true;
                                     break;
                                 }
@@ -1484,49 +1347,78 @@ namespace THUMDER.Deluxe
                     break;
                 case 32: //LOADS
                     UsedRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.BYTE));
+                    uint address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.BYTE));
                     break;
                 case 33:
                     UsedRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.HALF));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.HALF));
                     break;
                 case 35:
                     UsedRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.WORD));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.WORD));
                     break;
                 case 36:
                     UsedRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.UBYTE));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.UBYTE));
                     break;
                 case 37:
                     UsedRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.UHALF));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.UHALF));
                     break;
                 case 38:
                     UsedfRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.FLOAT));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.FLOAT));
                     break;
                 case 39:
                     UsedfRegisters[(int)rd] = 1; //Mark the register as being used.
-                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], (uint)(A.Data + EXreg[addressSection]), MemAccessTypes.DOUBLE));
+                    address = (uint)(A[0].Data + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    this.PedingMemAccess.Add(new MemAccess(EXreg[rs2Section], address, MemAccessTypes.DOUBLE));
                     break;
                 case 40: //STORES
-                    this.PedingMemAccess.Add(new MemAccess((uint)(EXreg[rs2Section] + EXreg[addressSection]), BitConverter.GetBytes(Registers[EXreg[rs1Section]].Data), MemAccessTypes.BYTE));
+                    address = (uint)(EXreg[rs2Section] + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    SDR[0] = Registers[EXreg[rs1Section]];
+                    this.PedingMemAccess.Add(new MemAccess(address, BitConverter.GetBytes(SDR[0].Data), MemAccessTypes.BYTE));
                     break;
                 case 41:
-                    this.PedingMemAccess.Add(new MemAccess((uint)(EXreg[rs2Section] + EXreg[addressSection]), BitConverter.GetBytes(Registers[EXreg[rs1Section]].Data), MemAccessTypes.HALF));
+                    address = (uint)(EXreg[rs2Section] + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    SDR[0] = Registers[EXreg[rs1Section]];
+                    this.PedingMemAccess.Add(new MemAccess(address, BitConverter.GetBytes(SDR[0].Data), MemAccessTypes.HALF));
                     break;
                 case 43:
-                    this.PedingMemAccess.Add(new MemAccess((uint)(EXreg[rs2Section] + EXreg[addressSection]), BitConverter.GetBytes(Registers[EXreg[rs1Section]].Data), MemAccessTypes.WORD));
+                    address = (uint)(EXreg[rs2Section] + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    SDR[0] = Registers[EXreg[rs1Section]];
+                    this.PedingMemAccess.Add(new MemAccess(address, BitConverter.GetBytes(SDR[0].Data), MemAccessTypes.WORD));
                     break;
                 case 46:
-                    this.PedingMemAccess.Add(new MemAccess((uint)(EXreg[rs2Section] + EXreg[addressSection]), BitConverter.GetBytes(fRegisters[EXreg[rs1Section]].Data), MemAccessTypes.FLOAT));
+                    address = (uint)(EXreg[rs2Section] + EXreg[addressSection]);
+                    DMAR = new BitVector32((int)(address));
+                    SDR[0] = Registers[EXreg[rs1Section]];
+                    this.PedingMemAccess.Add(new MemAccess(address, BitConverter.GetBytes(SDR[0].Data), MemAccessTypes.FLOAT));
                     break;
                 case 47:
+                    address = (uint)(EXreg[rs2Section] + EXreg[addressSection]);
                     aux.Clear();
-                    aux.AddRange(BitConverter.GetBytes(Afp[0].Data));
-                    aux.AddRange(BitConverter.GetBytes(Afp[1].Data));
-                    this.PedingMemAccess.Add(new MemAccess((uint)(EXreg[rs2Section] + EXreg[addressSection]), aux.ToArray(), MemAccessTypes.DOUBLE));
+                    aux.AddRange(BitConverter.GetBytes(A[0].Data));
+                    aux.AddRange(BitConverter.GetBytes(A[1].Data));
+                    DMAR = new BitVector32((int)(address));
+                    SDR = A;
+                    this.PedingMemAccess.Add(new MemAccess(address, aux.ToArray(), MemAccessTypes.DOUBLE));
                     break;
             }
             if (success)

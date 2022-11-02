@@ -1,153 +1,10 @@
 ﻿using THUMDER.Interpreter;
 using System.Collections.Specialized;
-using System.Text;
-using System.Runtime.CompilerServices;
-using System.Xml;
-using System.Reflection.Metadata.Ecma335;
-using System.Reflection.Metadata;
-using System.ComponentModel;
 
 namespace THUMDER.Deluxe
 {
     internal sealed partial class SimManager
     {
-        /// <summary>
-        /// Program Counter
-        /// </summary>
-        private uint PC, startingPC;
-
-        /// <summary>
-        /// Assembly currently loaded in memory.
-        /// </summary>
-        private ASM loadedProgram;
-
-        /// <summary>
-        /// List of Arithmetic Logical Units.
-        /// </summary>
-        private List<ALU> alus;
-        
-        /// <summary>
-        /// List of Floating Point add units.
-        /// </summary>
-        private List<FPU> adds;
-
-        /// <summary>
-        /// List of Floating Point multiply units.
-        /// </summary>
-        private List<FPU> muls;
-
-        /// <summary>
-        /// List of Floating Point divisor units.
-        /// </summary>
-        private List<FPU> divs;
-
-        /// <summary>
-        /// General Purpose 32 bits registers.
-        /// </summary>
-        private BitVector32[] Registers;
-
-        /// <summary>
-        /// Floating point 32 bits registers.
-        /// </summary>
-        private BitVector32[] fRegisters;
-
-        /// <summary>
-        /// Special register to store fetched data.
-        /// </summary>
-        private BitVector32 IMAR;
-
-        /// <summary>
-        /// Instruction in each execution stage.
-        /// </summary>
-        private BitVector32 IFreg, IDreg, EXreg, MEMreg, WBreg, WBDataReg;
-
-        /// <summary>
-        /// Special register to keep the output from the ALU.
-        /// </summary>
-        private BitVector32 ALUout;
-
-        /// <summary>
-        /// Register to store the instruction currentyly in execution.
-        /// </summary>
-        private BitVector32 OPreg;
-
-        /// <summary>
-        /// Memory output.
-        /// </summary>
-        private BitVector32[] LMD;
-
-        /// <summary>
-        /// Special register to keep the output from the FPU.
-        /// </summary>
-        private BitVector32[] FPUout; //Size of 2 to store doubles.
-
-        /// <summary>
-        /// Temporal register to store operations not going to the fp units.
-        /// </summary>
-        private BitVector32[] tempFpRegister; //this is a bit of a hack to avoid doing more operations in the EX units.
-        
-        /// <summary>
-        /// Temporal register to store operations not going to the alu units.
-        /// </summary>
-        private BitVector32 tempOpRegister; //this is a bit of a hack to avoid doing more operations in the EX units.
-
-        /// <summary>
-        /// Floating point status register.
-        /// </summary>
-        private BitVector32 FPstatus;
-
-        /// <summary>
-        /// Register to store jump conditions.
-        /// </summary>
-        private bool Condition;
-        private bool TempCondition;
-        
-        /// <summary>
-        /// Stores if the FPU outputed a float or double.
-        /// </summary>
-        private bool fpuDouble = false;
-
-        /// <summary>
-        /// If PC jumped clear units on execution.
-        /// </summary>
-        private bool jump = false;
-
-        /// <summary>
-        /// The number of cycles runned in the curtent emulation.
-        /// </summary>
-        public ulong Cycles { get; private set; }
-
-        /// <summary>
-        /// Lists of pending memory accesses.
-        /// </summary>
-        private List<MemAccess?> PedingMemAccess = new List<MemAccess?>();
-
-        /// <summary>
-        /// A list that holds if a register is being written by an instruction.
-        /// </summary>
-        private byte[] UsedRegisters = new byte[32];
-        
-        /// <summary>
-        /// A list that holds if a floatin point register is being written by an instruction.
-        /// </summary>
-        private byte[] UsedfRegisters = new byte[32];
-        
-        /// <summary>
-        /// Instruction arguments.
-        /// </summary>
-        private int IDOpcode, rd, rs2, rs1, funct, shamt, address;
-        private int tmpIDOpcode, tmprd, tmprs2, tmprs1, tmpfunct, tmpshamt, tmpaddress;
-
-        /// <summary>
-        /// Stages of execution where the CPU might need to wait.
-        /// </summary>
-        private bool RStall, DStall;
-
-        /// <summary>
-        /// Controls the stopping of the emulation.
-        /// </summary>
-        private bool trap0Found, stop = false;
-
         /// <summary>
         /// Stalls stats counters.
         /// </summary>
@@ -197,7 +54,7 @@ namespace THUMDER.Deluxe
             this.Registers = new BitVector32[32];
             this.fRegisters = new BitVector32[32];
             LMD = zeroBitsDouble;
-            FPUout = zeroBitsDouble;
+            ALUout = zeroBitsDouble;
         }
 
         public static void RunFullSimulation()
@@ -247,20 +104,20 @@ namespace THUMDER.Deluxe
                 ds[j++] = BitConverter.ToDouble(bytes.ToArray(), 0);
                 bytes.Clear();
             }
-            registersText += String.Concat("PC=    0x" + Instance.PC.ToString("X8")                 + "     F0 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[0].Data).ToString("E4") + "    D0 = " + ds[0].ToString("E8") + "\n");
-            registersText += String.Concat("IMAR=  0x" + Instance.IMAR.Data.ToString("X8")          + "     F1 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[1].Data).ToString("E4") + "\n");
-            registersText += String.Concat("IR=    0x" + Instance.IDreg.Data.ToString("X8")         + "     F2 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[2].Data).ToString("E4") + "    D2 = " + ds[1].ToString("E8") + "\n");
-            registersText += String.Concat("A=     0x" + Instance.Afp[0].Data.ToString("X8")        + "     F3 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[3].Data).ToString("E4") + "\n");
-            registersText += String.Concat("AHI=   0x" + Instance.Afp[1].Data.ToString("X8")        + "     F4 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[4].Data).ToString("E4") + "    D4 = " + ds[2].ToString("E8") + "\n");
-            registersText += String.Concat("B=     0x" + Instance.Bfp[0].Data.ToString("X8")        + "     F5 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[5].Data).ToString("E4") + "\n");
-            registersText += String.Concat("BHI=   0x" + Instance.Bfp[1].Data.ToString("X8")        + "     F6 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[6].Data).ToString("E4") + "    D6 = " + ds[3].ToString("E8") + "\n");
-            registersText += String.Concat("BTA=   0x" + zeroBits.Data.ToString("X8")               + "     F7 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[7].Data).ToString("E4") + "\n");
-            registersText += String.Concat("ALU=   0x" + Instance.ALUout.Data.ToString("X8")        + "     F8 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[8].Data).ToString("E4") + "    D8 = " + ds[4].ToString("E8") + "\n");
-            registersText += String.Concat("ALUHI= 0x" + Instance.FPUout[1].Data.ToString("X8")     + "     F9 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[9].Data).ToString("E4") + "\n");
+            registersText += String.Concat("PC=    0x" + Instance.PC.ToString("X8")                 + "     F0 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[0].Data).ToString("E4")  + "    D0 = " + ds[0].ToString("E8") + "\n");
+            registersText += String.Concat("IMAR=  0x" + Instance.IMAR.Data.ToString("X8")          + "     F1 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[1].Data).ToString("E4")  + "\n");
+            registersText += String.Concat("IR=    0x" + Instance.IDreg.Data.ToString("X8")         + "     F2 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[2].Data).ToString("E4")  + "    D2 = " + ds[1].ToString("E8") + "\n");
+            registersText += String.Concat("A=     0x" + Instance.A[0].Data.ToString("X8")          + "     F3 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[3].Data).ToString("E4")  + "\n");
+            registersText += String.Concat("AHI=   0x" + Instance.A[1].Data.ToString("X8")          + "     F4 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[4].Data).ToString("E4")  + "    D4 = " + ds[2].ToString("E8") + "\n");
+            registersText += String.Concat("B=     0x" + Instance.B[0].Data.ToString("X8")          + "     F5 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[5].Data).ToString("E4")  + "\n");
+            registersText += String.Concat("BHI=   0x" + Instance.B[1].Data.ToString("X8")          + "     F6 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[6].Data).ToString("E4")  + "    D6 = " + ds[3].ToString("E8") + "\n");
+            registersText += String.Concat("BTA=   0x" + zeroBits.Data.ToString("X8")               + "     F7 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[7].Data).ToString("E4")  + "\n");
+            registersText += String.Concat("ALU=   0x" + Instance.ALUout[0].Data.ToString("X8")     + "     F8 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[8].Data).ToString("E4")  + "    D8 = " + ds[4].ToString("E8") + "\n");
+            registersText += String.Concat("ALUHI= 0x" + Instance.ALUout[1].Data.ToString("X8")     + "     F9 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[9].Data).ToString("E4")  + "\n");
             registersText += String.Concat("FPSR=  0x" + Instance.FPstatus.Data.ToString("X8")      + "     F10= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[10].Data).ToString("E4") + "    D10= " + ds[5].ToString("E8") + "\n");
-            registersText += String.Concat("DMAR=  0x" + zeroBits.Data.ToString("X8")               + "     F11= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[11].Data).ToString("E4") + "\n");
-            registersText += String.Concat("SDR=   0x" + zeroBits.Data.ToString("X8")               + "     F12= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[12].Data).ToString("E4") + "    D12= " + ds[6].ToString("E8") + "\n");
-            registersText += String.Concat("SDRHI= 0x" + zeroBits.Data.ToString("X8")               + "     F13= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[13].Data).ToString("E4") + "\n");
+            registersText += String.Concat("DMAR=  0x" + Instance.DMAR.Data.ToString("X8")          + "     F11= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[11].Data).ToString("E4") + "\n");
+            registersText += String.Concat("SDR=   0x" + Instance.SDR[0].Data.ToString("X8")        + "     F12= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[12].Data).ToString("E4") + "    D12= " + ds[6].ToString("E8") + "\n");
+            registersText += String.Concat("SDRHI= 0x" + Instance.SDR[1].Data.ToString("X8")        + "     F13= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[13].Data).ToString("E4") + "\n");
             registersText += String.Concat("LDR=   0x" + Instance.LMD[0].Data.ToString("X8")        + "     F14= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[14].Data).ToString("E4") + "    D14= " + ds[7].ToString("E8") + "\n");
             registersText += String.Concat("LDRHI= 0x" + Instance.LMD[1].Data.ToString("X8")        + "     F15= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[15].Data).ToString("E4") + "\n");
 
