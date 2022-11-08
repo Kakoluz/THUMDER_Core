@@ -53,6 +53,7 @@ namespace THUMDER
                                   "F9. Set breakpoint \n" +
                                   "F10. Remove breakpoint \n" +
                                   "\n" +
+                                  "T. Settings \n" +
                                   "S. Print stats \n" +
                                   "P. Print Pipeline \n" +
                                   "Q. Exit \n";
@@ -278,6 +279,272 @@ namespace THUMDER
                         case ConsoleKey.L:
                             Console.Clear();
                             SimManager.Reset();
+                            break;
+                        case ConsoleKey.T:
+                            bool exitSettings = false;
+                            bool settingChanged = false;
+                            while (!exitSettings)
+                            {
+                                Console.Clear();
+                                Console.WriteLine("                           Emulation Settings" +
+                                                  "\n======================================================================" +
+                                                  "\n1. Memory size: " + SimManager.Memsize + " bytes (" + (SimManager.Memsize/1024).ToString("N2") + " kB)" +
+                                                  "\n2. Data Forwarding: " + SimManager.Forwarding +
+                                                  "\n3. fAdd Units: " + SimManager.ADDUnits +
+                                                  "\n4. fADD Delay: " + SimManager.ADDDelay + " cycles" +
+                                                  "\n5. fMul Units: " + SimManager.MULUnits +
+                                                  "\n6. fMUL Delay: " + SimManager.MULDelay + " cycles" +
+                                                  "\n7. fDiv Units: " + SimManager.DIVUnits +
+                                                  "\n8. fDIV Delay: " + SimManager.DIVDelay + " cycles" +
+                                                  "\n\n WANING: Changing ANY setting will reset the emulator." +
+                                                  "\nPress the number setting to change or Q to return to the main menu.");
+                                switch (Console.ReadKey(false).Key)
+                                {
+                                    case ConsoleKey.D1:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the new memory size in bytes (Default: 32768): ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1024 or > 65536)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1024 - 65536).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.ResizeMemory((uint)textnumber);
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D2:
+                                        SimManager.SetForwarding(!SimManager.Forwarding);
+                                        settingChanged = true;
+                                        break;
+                                    case ConsoleKey.D3:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the amount of floating point add units: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.ADDUnits = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D4:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the delay of floating point add units in cycles: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.ADDDelay = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D5:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the amount of floating point multiply units: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.MULUnits = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D6:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the delay of floating point multiply units in cycles: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.MULDelay = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D7:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the amount of floating point divide units: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.DIVUnits = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.D8:
+                                        Console.Clear();
+                                        Console.WriteLine("Enter the delay of floating point divide units in cycles: ");
+                                        text = Console.ReadLine();
+                                        if (text != null && text.Contains("0x"))
+                                        {
+                                            text = text.Replace("0x", "");
+                                            textnumber = Convert.ToInt32(text, 16);
+                                        }
+                                        else if (text != null)
+                                        {
+                                            textnumber = Convert.ToInt32(text);
+                                        }
+                                        else
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Invalid input.\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        if (textnumber is < 1 or > 256)
+                                        {
+                                            Console.Clear();
+                                            Console.WriteLine("Enter a number within this range (1 - 255).\n" +
+                                                              "Returning to settings menu.");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SimManager.DIVDelay = (byte)textnumber;
+                                            settingChanged = true;
+                                        }
+                                        break;
+                                    case ConsoleKey.Q:
+                                        exitSettings = true;
+                                        break;
+                                        
+                                }
+                                if (settingChanged)
+                                {
+                                    SimManager.Reset();
+                                }
+                            }
                             break;
                         default:
                             Console.Clear();
