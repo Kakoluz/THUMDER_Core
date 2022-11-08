@@ -145,8 +145,9 @@ namespace THUMDER.Deluxe
         /// </summary>
         private void IF()
         {
-            if (IFreg[opSection] is 5 or 6 && ((IFreg[rs1Section] == IDreg[rdSection]) && (IDreg[opSection] == 0 && IDreg[functSection] is 32 or 33 or 34 or 35) || IDreg[opSection] is 8 or 9 or 10 or 11 && (IFreg[rs1Section] == IDreg[rs2Section])))
+            if (IFreg[opSection] is 4 or 5 && ((IFreg[rs1Section] == IDreg[rdSection]) && (IDreg[opSection] == 0 && IDreg[functSection] is 32 or 33 or 34 or 35) || IDreg[opSection] is 8 or 9 or 10 or 11 && (IFreg[rs1Section] == IDreg[rs2Section])))
             {
+                ++RAWStalls;
                 DStall = true;
                 IDreg = new BitVector32(0);
             }
@@ -211,6 +212,8 @@ namespace THUMDER.Deluxe
                 }
             }
             DStall = !this.LoadInstruction();
+            if (DStall)
+                ++RAWStalls;
             if (RStall)
                 DStall = true;
             if (DStall && IFreg[opSection] is 4 or 5 or 6 or 7) //If the next instruction is a branch, the stall is a load stall.

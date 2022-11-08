@@ -12,6 +12,7 @@ namespace THUMDER.Deluxe
         public uint LDStalls { get; private set; }
         public uint JumpStalls { get; private set; }
         public uint fpStalls { get; private set; }
+        public uint RAWStalls { get; private set; }
         public uint WAWStalls { get; private set; }
         public uint StructuralStalls { get; private set; }
         public uint ControlStalls { get; private set; }
@@ -184,14 +185,25 @@ namespace THUMDER.Deluxe
             output += String.Concat("Forwarding enabled: " + Forwarding + "\n");
 
             output += String.Concat("\n Stalls: \n   ");
-            output += String.Concat("RAW stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls).ToString() + "\n      ");
-            output += String.Concat("LD stalls: " + Instance.LDStalls + "\n      ");
-            output += String.Concat("Branch/Jump stalls: " + Instance.JumpStalls + "\n      ");
-            output += String.Concat("Floating Point stalls: " + Instance.fpStalls + "\n   ");
+            if (Forwarding)
+            {
+                output += String.Concat("RAW stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls).ToString() + "\n      ");
+                output += String.Concat("LD stalls: " + Instance.LDStalls + "\n      ");
+                output += String.Concat("Branch/Jump stalls: " + Instance.JumpStalls + "\n      ");
+                output += String.Concat("Floating Point stalls: " + Instance.fpStalls + "\n   ");
+            }
+            else
+            {
+                output += String.Concat("RAW stalls: " + Instance.RAWStalls + "\n      ");
+            }
+
             output += String.Concat("WAW stalls: " + Instance.WAWStalls + "\n   ");
             output += String.Concat("Structural stalls: " + Instance.StructuralStalls + "\n   ");
             output += String.Concat("Control stalls: " + Instance.ControlStalls + "\n   ");
-            output += String.Concat("Total stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls + Instance.WAWStalls + Instance.StructuralStalls + Instance.ControlStalls).ToString() + "\n");
+            if (Forwarding)
+                output += String.Concat("Total stalls: " + (Instance.LDStalls + Instance.JumpStalls + Instance.fpStalls + Instance.WAWStalls + Instance.StructuralStalls + Instance.ControlStalls).ToString() + "\n");
+            else
+                output += String.Concat("Total stalls: " + (Instance.RAWStalls + Instance.WAWStalls + Instance.StructuralStalls + Instance.ControlStalls).ToString() + "\n");
 
             output += String.Concat("\nConditional Branches: \n   ");
             output += String.Concat("Total: " + (Instance.JumpsTaken + Instance.JumpsNotTaken).ToString() + "\n      ");
