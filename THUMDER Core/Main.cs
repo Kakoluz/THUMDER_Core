@@ -136,10 +136,12 @@ namespace THUMDER
                         case ConsoleKey.F6:
                             Console.Clear();
                             SimManager.RunACycle();
+                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n");
                             break;
                         case ConsoleKey.F7:
                             Console.Clear();
                             SimManager.RunUntilBreakpoint();
+                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n");
                             break;
                         case ConsoleKey.F3:
                             Console.Clear();
@@ -540,9 +542,12 @@ namespace THUMDER
                                         break;
                                         
                                 }
+                                Console.Clear();
                                 if (settingChanged)
                                 {
                                     SimManager.Reset();
+                                    Console.WriteLine("Settings chaged successfully.\n" +
+                                                      "CPU has been reseted.\n");
                                 }
                             }
                             break;
