@@ -252,7 +252,6 @@ namespace THUMDER
                                     "Returning to menu.");
                             }
                             break;
-                            break;
                         case ConsoleKey.S:
                             Console.Clear();
                             Console.WriteLine(SimManager.PrintStats());

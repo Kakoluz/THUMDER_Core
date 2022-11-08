@@ -92,7 +92,7 @@ namespace THUMDER.Deluxe
                 string instruction = assembly.CodeSegment[(int)i];
                 int parsedArguments = 1;
                 Assembler.Instruction instructionSyntax = Assembler.OpCodes[0]; //Default to NOP so compiler doesn't complain.
-                assembledInstruction = new BitVector32(zeroBits);
+                assembledInstruction = new BitVector32(0);
                 string[] aux = instruction.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                 foreach (var opcode in Assembler.OpCodes)
                 {

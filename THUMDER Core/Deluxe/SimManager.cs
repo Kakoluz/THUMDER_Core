@@ -53,8 +53,9 @@ namespace THUMDER.Deluxe
                 this.alus.Add(new ALU());
             this.Registers = new BitVector32[32];
             this.fRegisters = new BitVector32[32];
-            LMD = zeroBitsDouble;
-            ALUout = zeroBitsDouble;
+            this.LMD = new BitVector32[2];
+            this.ALUout = new BitVector32[2];
+            this.SDR = new BitVector32[2];
         }
 
         public static void RunFullSimulation()
@@ -111,7 +112,7 @@ namespace THUMDER.Deluxe
             registersText += String.Concat("AHI=   0x" + Instance.A[1].Data.ToString("X8")          + "     F4 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[4].Data).ToString("E4")  + "    D4 = " + ds[2].ToString("E8") + "\n");
             registersText += String.Concat("B=     0x" + Instance.B[0].Data.ToString("X8")          + "     F5 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[5].Data).ToString("E4")  + "\n");
             registersText += String.Concat("BHI=   0x" + Instance.B[1].Data.ToString("X8")          + "     F6 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[6].Data).ToString("E4")  + "    D6 = " + ds[3].ToString("E8") + "\n");
-            registersText += String.Concat("BTA=   0x" + zeroBits.Data.ToString("X8")               + "     F7 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[7].Data).ToString("E4")  + "\n");
+            registersText += String.Concat("BTA=   0x" + 0.ToString("X8")                           + "     F7 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[7].Data).ToString("E4")  + "\n");
             registersText += String.Concat("ALU=   0x" + Instance.ALUout[0].Data.ToString("X8")     + "     F8 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[8].Data).ToString("E4")  + "    D8 = " + ds[4].ToString("E8") + "\n");
             registersText += String.Concat("ALUHI= 0x" + Instance.ALUout[1].Data.ToString("X8")     + "     F9 = " + BitConverter.Int32BitsToSingle(Instance.fRegisters[9].Data).ToString("E4")  + "\n");
             registersText += String.Concat("FPSR=  0x" + Instance.FPstatus.Data.ToString("X8")      + "     F10= " + BitConverter.Int32BitsToSingle(Instance.fRegisters[10].Data).ToString("E4") + "    D10= " + ds[5].ToString("E8") + "\n");
@@ -157,15 +158,15 @@ namespace THUMDER.Deluxe
         internal static string PrintStats()
         {
             uint instructionsPipeline = 0;
-            if (Instance.IFreg.Data != zeroBits.Data)
+            if (Instance.IFreg.Data != 0)
                 instructionsPipeline++;
-            if (Instance.IDreg.Data != zeroBits.Data)
+            if (Instance.IDreg.Data != 0)
                 instructionsPipeline++;
-            if (Instance.OPreg.Data != zeroBits.Data)
+            if (Instance.OPreg.Data != 0)
                 instructionsPipeline++;
-            if (Instance.MEMreg.Data != zeroBits.Data)
+            if (Instance.MEMreg.Data != 0)
                 instructionsPipeline++;
-            if (Instance.WBreg.Data != zeroBits.Data)
+            if (Instance.WBreg.Data != 0)
                 instructionsPipeline++;
 
             string output = String.Empty;
@@ -240,12 +241,12 @@ namespace THUMDER.Deluxe
 
         private void DoCycle()
         {
+            ++Cycles;
             this.WB();            //We write to registers in the first half of the cycle.
             this.MEM();           //Access the memory if needed.
             this.EX();            //Apply a cycle to all execution units and place results, if available on the output register.
             this.ID();            //We read from registers in the second half to avoid data issues.
             this.IF();            //Memory access is the first step. but won't happen if there are peding operations to memory WHICH SHOULD ONLY HAPPEN IF THERE IS A INSTRUCTION REQUESTING IT.
-            ++Cycles;
         }
 
         /// <summary>

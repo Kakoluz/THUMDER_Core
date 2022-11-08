@@ -73,12 +73,12 @@ namespace THUMDER.Interpreter
             new Instruction ( "subd",     0x04000005,   "c,a,b" ),  /* Sub double                    */
             new Instruction ( "multd",    0x04000006,   "c,a,b" ),  /* Multiply double               */
             new Instruction ( "divd",     0x04000007,   "c,a,b" ),  /* Divide double                 */
-            new Instruction ( "cvtf2d",   0x04000008,   "c,a,b" ),  /* Convert float to double       */
-            new Instruction ( "cvtf2i",   0x04000009,   "c,a,b" ),  /* Convert float to integer      */
-            new Instruction ( "cvtd2f",   0x0400000A,   "c,a,b" ),  /* Convert double to float       */
-            new Instruction ( "cvtd2i",   0x0400000B,   "c,a,b" ),  /* Convert double to integer     */
-            new Instruction ( "cvti2f",   0x0400000C,   "c,a,b" ),  /* Convert integer to float      */
-            new Instruction ( "cvti2d",   0x0400000D,   "c,a,b" ),  /* Convert integer to double     */
+            new Instruction ( "cvtf2d",   0x04000008,   "c,a"   ),  /* Convert float to double       */
+            new Instruction ( "cvtf2i",   0x04000009,   "c,a"   ),  /* Convert float to integer      */
+            new Instruction ( "cvtd2f",   0x0400000A,   "c,a"   ),  /* Convert double to float       */
+            new Instruction ( "cvtd2i",   0x0400000B,   "c,a"   ),  /* Convert double to integer     */
+            new Instruction ( "cvti2f",   0x0400000C,   "c,a"   ),  /* Convert integer to float      */
+            new Instruction ( "cvti2d",   0x0400000D,   "c,a"   ),  /* Convert integer to double     */
             new Instruction ( "mult",     0x0400000E,   "c,a,b" ),  /* Multiply integer              */
             new Instruction ( "div",      0x0400000F,   "c,a,b" ),  /* Divide integer                */
             new Instruction ( "eqf",      0x04000010,   "a,b"   ),  /* Set if equal float            */

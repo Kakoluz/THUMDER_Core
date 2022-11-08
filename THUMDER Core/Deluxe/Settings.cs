@@ -78,15 +78,6 @@ namespace THUMDER.Deluxe
         static readonly BitVector32.Section opSection = BitVector32.CreateSection(63, rs1Section);
 
         /// <summary>
-        /// Bitvector storing 0 to use recurrently to clean registers.
-        /// </summary>
-        private static readonly BitVector32 zeroBits = new BitVector32(0);
-        /// <summary>
-        /// Bitvector storing 0 to use recurrently to clean double registers.
-        /// </summary>
-        private static readonly BitVector32[] zeroBitsDouble = { zeroBits, zeroBits };
-
-        /// <summary>
         /// Singleton internal instance.
         /// </summary>
         private static SimManager? instance = null;
