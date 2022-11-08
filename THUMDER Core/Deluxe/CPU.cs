@@ -575,27 +575,30 @@ namespace THUMDER.Deluxe
                             switch(IDOpcode)
                             {
                                 case 1:
-                                    if (WBreg[rdSection] == rs1)
+                                    if (WBreg[functSection] is < 16 or 22 or 23)
                                     {
-                                        if (Forwarding)
+                                        if (WBreg[rdSection] == rs1)
                                         {
-                                            A[0] = new BitVector32(LMD[0]);
-                                            A[1] = new BitVector32(LMD[1]);
-                                            forwarded = true;
+                                            if (Forwarding)
+                                            {
+                                                A[0] = new BitVector32(LMD[0]);
+                                                A[1] = new BitVector32(LMD[1]);
+                                                forwarded = true;
+                                            }
+                                            else
+                                                return false;
                                         }
-                                        else
-                                            return false;
-                                    }
-                                    if (WBreg[rdSection] == rs2)
-                                    {
-                                        if (Forwarding)
+                                        if (WBreg[rdSection] == rs2)
                                         {
-                                            B[0] = new BitVector32(LMD[0]);
-                                            B[1] = new BitVector32(LMD[1]);
-                                            forwarded = true;
+                                            if (Forwarding)
+                                            {
+                                                B[0] = new BitVector32(LMD[0]);
+                                                B[1] = new BitVector32(LMD[1]);
+                                                forwarded = true;
+                                            }
+                                            else
+                                                return false;
                                         }
-                                        else
-                                            return false;
                                     }
                                     break;
                                 case 46:
@@ -1002,8 +1005,8 @@ namespace THUMDER.Deluxe
                         JumpsNotTaken++;
                     break;
                 case 6:
-                    if (comparingFP)
-                        return false;
+                    if (EXreg[opSection] == 1 && EXreg[functSection] is > 15 and not 22 or 23)
+                            return false;
                     Condition = FPstatus.Data == 1;
                     if (Condition)
                         JumpsTaken++;
@@ -1011,7 +1014,7 @@ namespace THUMDER.Deluxe
                         JumpsNotTaken++;
                     break;
                 case 7:
-                    if (comparingFP)
+                    if (EXreg[opSection] == 1 && EXreg[functSection] is > 15 and not 22 or 23)
                         return false;
                     Condition = FPstatus.Data == 0;
                     if (Condition)
