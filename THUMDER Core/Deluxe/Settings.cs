@@ -18,33 +18,33 @@ namespace THUMDER.Deluxe
         /// <summary>
         /// Number of Arithmetic Logical Units.
         /// </summary>
-        public static int ALUunits { get; private set; } = 1;
+        public static int ALUunits { get; set; } = 1;
 
         /// <summary>
         /// Number of summator units for floating point.
         /// </summary>
-        public static int ADDUnits { get; private set; } = 1;
+        public static int ADDUnits { get; set; } = 1;
         /// <summary>
         /// Number of multiplier units for floating point.
         /// </summary>
-        public static int MULUnits { get; private set; } = 1;
+        public static int MULUnits { get; set; } = 1;
         /// <summary>
         /// Number of divisor units for floating point.
         /// </summary>
-        public static int DIVUnits { get; private set; } = 1;
+        public static int DIVUnits { get; set; } = 1;
 
         /// <summary>
         /// Number of cicles for a floating point add operation.
         /// </summary>
-        public static int ADDDelay { get; private set; } = 2;
+        public static int ADDDelay { get; set; } = 2;
         /// <summary>
         /// Number of cicles for a floating point multiplication operation.
         /// </summary>
-        public static int MULDelay { get; private set; } = 5;
+        public static int MULDelay { get; set; } = 5;
         /// <summary>
         /// Number of cicles for a floatig point division operation.
         /// </summary>
-        public static int DIVDelay { get; private set; } = 19;
+        public static int DIVDelay { get; set; } = 19;
 
         /// <summary>
         /// R-Type Instruction function field.
