@@ -269,7 +269,7 @@ namespace THUMDER.Deluxe
         }
         
         /// <summary>
-        /// Resets and run the simulation.
+        /// Resets the CPU.
         /// </summary>
         public static void Restart()
         {
@@ -294,7 +294,7 @@ namespace THUMDER.Deluxe
         }
 
         /// <summary>
-        /// Clears the pipeline and reloads the last file. 
+        /// Restore al settings to default and loads the last file. 
         /// </summary>
         public static void Reset()
         {
