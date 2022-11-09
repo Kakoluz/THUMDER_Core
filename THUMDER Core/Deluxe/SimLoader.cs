@@ -208,7 +208,7 @@ namespace THUMDER.Deluxe
                     }
                 }
                 MemoryManager.Instance.WriteWord((uint)(assembly.textAddress + instructionsPlaced), assembledInstruction);
-                OriginalText.Add((uint)(assembly.textAddress + instructionsPlaced), assembly.OriginalText[instruction]);
+                OriginalText.Add((uint)(assembledInstruction.Data), assembly.OriginalText[instruction]);
                 instructionsPlaced += 4;
             }
         }
