@@ -1,4 +1,5 @@
-﻿using THUMDER.Deluxe;
+﻿using System.Runtime.ExceptionServices;
+using THUMDER.Deluxe;
 using THUMDER.Interpreter;
 
 namespace THUMDER
@@ -50,6 +51,7 @@ namespace THUMDER
                                   "F3. Print registers \n" +
                                   "F4. Memory explorer \n" +
                                   "\n" +
+                                  "C. Code explorer\n" +
                                   "F9. Set breakpoint \n" +
                                   "F10. Remove breakpoint \n" +
                                   "\n" +
@@ -205,6 +207,45 @@ namespace THUMDER
                                         quitMemExplorer = true;
                                         break;
                                 }
+                            }
+                            Console.Clear();
+                            break;
+                        case ConsoleKey.C:
+                            bool quitCodeExplorer = false;
+                            Console.Clear();
+                            Console.WriteLine("Instruction explorer\n");
+                            Console.WriteLine(String.Format("{0} {1,-12}", "  Address", "       Content"));
+                            x = Console.GetCursorPosition().Left;
+                            y = Console.GetCursorPosition().Top;
+                            textnumber = 0;
+                            Console.WriteLine(SimManager.InstructionExplorer(textnumber));
+                            Console.WriteLine("\nNavigate with the arrow keys. Press Q to quit.");
+                            while (!quitCodeExplorer)
+                            {
+                                if (textnumber < 4)
+                                    textnumber = 4;
+                                else if (textnumber > (SimManager.Memsize - 5))
+                                    textnumber = (int)(SimManager.Memsize - 5);
+                                Console.SetCursorPosition(x, y);
+                                for (int i = y + 10; i >= y; i--)
+                                {
+                                    Console.SetCursorPosition(0, i);
+                                    Console.Write(new string(' ', Console.WindowWidth));
+                                }
+                                Console.WriteLine(SimManager.InstructionExplorer(textnumber));
+                                switch (Console.ReadKey(false).Key)
+                                {
+                                    case ConsoleKey.UpArrow:
+                                        textnumber-=4;
+                                        break;
+                                    case ConsoleKey.DownArrow:
+                                        textnumber+=4;
+                                        break;
+                                    case ConsoleKey.Q:
+                                        quitCodeExplorer = true;
+                                        break;
+                                }
+
                             }
                             Console.Clear();
                             break;

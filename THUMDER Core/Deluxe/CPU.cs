@@ -1,5 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.Diagnostics;
 using THUMDER.Interpreter;
 
 namespace THUMDER.Deluxe
@@ -95,11 +94,6 @@ namespace THUMDER.Deluxe
         /// The number of cycles runned in the curtent emulation.
         /// </summary>
         public ulong Cycles { get; private set; }
-
-        /// <summary>
-        /// Lists of pending memory accesses.
-        /// </summary>
-        private List<MemAccess?> PedingMemAccess = new List<MemAccess?>();
 
         /// <summary>
         /// A list that holds if a register is being written by an instruction.
@@ -252,8 +246,6 @@ namespace THUMDER.Deluxe
         {
             RStall = !ExecuteInstruction();
             TickAllUnits();
-            if (PedingMemAccess.Count <= 1)
-                PedingMemAccess.Add(null); //Put a null memory access to have it indicate that there is no pending memory access and next insctruction can be taken.
             if (RStall) //IF EX is stalled, pass 0 to the next stage.
             {
                 MEMreg = new BitVector32(0);
@@ -318,7 +310,6 @@ namespace THUMDER.Deluxe
             }
             if (MEMreg[opSection] == 1 && MEMreg[functSection] is > 15 and not 22 or 23) //FP comparisons
                 comparingFP = false;
-            PedingMemAccess.RemoveAt(0);
             WBreg = MEMreg;
             MEMreg = new BitVector32(0);
         }

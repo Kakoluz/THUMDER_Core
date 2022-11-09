@@ -34,17 +34,22 @@ namespace THUMDER.Deluxe
         /// </summary>
         private static readonly Dictionary<int, int> Breakpoints = new Dictionary<int, int>();
 
-        private static readonly Dictionary<uint, string> OriginalText = new Dictionary<uint, string>();
+        /// <summary>
+        /// Dictionary that holds the translation from text to binary.
+        /// </summary>
+        private static readonly Dictionary<int, string> OriginalText = new Dictionary<int, string>(); //Useful to read instructions in the pipeline.
+
+        /// <summary>
+        /// Dictionary that holds witch instruction is in each memory address.
+        /// </summary>
+        private static readonly Dictionary<uint, int> InstructionAddresses = new Dictionary<uint, int>(); //Useful to read instructions in memory.
 
         private SimManager()
         {
             this.alus = new List<ALU>();
             this.adds = new List<FPU>();
             this.muls = new List<FPU>();
-            this.divs = new List<FPU>();
-            
-            this.PedingMemAccess = new List<MemAccess?>();
-            PedingMemAccess.Add(null);
+            this.divs = new List<FPU>();    
 
             for (int i = 0; i < ADDUnits; i++)
                 this.adds.Add(new FPU());
@@ -158,6 +163,17 @@ namespace THUMDER.Deluxe
             return output;
         }
 
+        internal static string InstructionExplorer(int offset)
+        {
+
+            string output = String.Empty;
+            for (uint i = (uint)(Instance.loadedProgram.textAddress + offset - 16); i <= (Instance.loadedProgram.textAddress + offset + 16) && i <= Memsize; i+=4)
+            {
+                output += String.Concat(String.Format("{0, -10}    {1}\n", "0x" + i.ToString("X8").ToUpper(), getInstruction(MemoryManager.Instance.ReadWord(i))));
+            }
+            return output;
+        }
+
         internal static string PrintStats()
         {
             uint instructionsPipeline = 0;
@@ -229,27 +245,28 @@ namespace THUMDER.Deluxe
         internal static string PrintPipeline()
         {
             string output = String.Empty;
-            output += String.Concat("Pipeline stage     Instruction \n" +
-                                    "--------------------------------------\n");
-            output += String.Concat("WB:                 0x" + Instance.WBreg.Data.ToString("X8")  + "\n");
-            output += String.Concat("MEM:                0x" + Instance.MEMreg.Data.ToString("X8") + "\n");
+            output += String.Concat("Stage              Instruction              Hex\n" +
+                                    "------------------------------------------------------------\n");
+            output += String.Concat(String.Format("{0,6}{1,25}{2,20}\n", "WB:", getInstruction(Instance.WBreg.Data), "0x" + Instance.WBreg.Data.ToString("X8")));
+            output += String.Concat(String.Format("{0,7}{1,24}{2,20}\n", "MEM:", getInstruction(Instance.MEMreg.Data), "0x" + Instance.MEMreg.Data.ToString("X8")));
             if (Instance.RStall)
             {
-                output += String.Concat("EX:    (stalled)    0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+                output += String.Concat(String.Format("{0,6}{1,5}{2,25}{3,20}\n", "EX:","(stalled)", getInstruction(Instance.EXreg.Data), "0x" + Instance.EXreg.Data.ToString("X8")));
             }
             else
             {
-                output += String.Concat("EX:                 0x" + Instance.EXreg.Data.ToString("X8") + "\n");
+                output += String.Concat(String.Format("{0,6}{1,25}{2,20}\n", "EX:" , getInstruction(Instance.EXreg.Data) , "0x" + Instance.EXreg.Data.ToString("X8")));
             }
             if (Instance.DStall)
             {
-                output += String.Concat("ID:    (stalled)    0x" + Instance.IDreg.Data.ToString("X8") + "\n");
+                output += String.Concat(String.Format("{0,6}{1,5}{2,25}{3,20}\n", "ID:", "(stalled)", getInstruction(Instance.IDreg.Data), "0x" + Instance.IDreg.Data.ToString("X8")));
+
             }
             else
             {
-                output += String.Concat("ID:                 0x" + Instance.IDreg.Data.ToString("X8") + "\n");
+                output += String.Concat(String.Format("{0,6}{1,25}{2,20}\n", "ID:", getInstruction(Instance.IDreg.Data), "0x" + Instance.IDreg.Data.ToString("X8")));
             }
-            output += String.Concat("IF:                 0x" + Instance.IFreg.Data.ToString("X8")  + "\n");
+            output += String.Concat(String.Format("{0,6}{1,25}{2,20}\n", "IF:", getInstruction(Instance.IFreg.Data), "0x" + Instance.IFreg.Data.ToString("X8")));
             return output;
         }
 
@@ -281,7 +298,46 @@ namespace THUMDER.Deluxe
         {
             Forwarding = newforwarding;
         }
-        
+
+        /// <summary>
+        /// Returns the text from a binary instruction.
+        /// </summary>
+        /// <param name="assembledInstruction">The instruction in binary form.</param>
+        /// <returns>The instruction in text form.</returns>
+        public static string getInstruction(in int assembledInstruction)  //This is not a disassembler
+        {
+            if (OriginalText.ContainsKey(assembledInstruction))
+            {
+                return OriginalText[assembledInstruction];
+            }
+            else if (assembledInstruction == 0)
+            {
+                return "NOP";
+            }
+            else
+                return "null"; //This should never happen.
+        }
+
+        /// <summary>
+        /// Returns the text from the instruction in a memory address.
+        /// </summary>
+        /// <param name="address">The address to covert.</param>
+        /// <returns>The instruction in text form.</returns>
+        public static string getInstruction(in uint address) //This is not a disassembler
+        {
+            if (InstructionAddresses.ContainsKey(address))
+            {
+                if (OriginalText.ContainsKey(InstructionAddresses[address]))
+                {
+                    return OriginalText[InstructionAddresses[address]];
+                }
+                else
+                    return "null"; //This should never happen
+            }
+            else
+                return "NOP";
+        }
+
         /// <summary>
         /// Resets the CPU.
         /// </summary>
@@ -315,50 +371,9 @@ namespace THUMDER.Deluxe
             ASM lastProgram = Instance.loadedProgram;
             Instance = new SimManager();
             labels.Clear();
+            OriginalText.Clear();
+            InstructionAddresses.Clear();
             LoadProgram(lastProgram);
-        }
-
-        struct MemAccess
-        {
-            public int? Destination { get; private set; }
-            public uint Address { get; private set; }
-            public byte[]? Content { get; private set; }
-            public MemAccessTypes Type { get; private set; }
-            public bool isWrite { get; private set; }
-
-            public MemAccess(uint address, byte[] content, MemAccessTypes type)
-            {
-                Destination = null;
-                Address = address;
-                Content = content;
-                Type = type;
-                isWrite = true;
-            }
-            public MemAccess(int destination, uint address, MemAccessTypes type)
-            {
-                Destination = destination;
-                Address = address;
-                Content = null;
-                Type = type;
-                isWrite = false;
-            }
-        }
-        internal struct MemAccessTypes
-        {
-            public static readonly MemAccessTypes BYTE = new("BYTE");
-            public static readonly MemAccessTypes UBYTE = new("UBYTE");
-            public static readonly MemAccessTypes WORD = new("WORD");
-            public static readonly MemAccessTypes UWORD = new("UWORD");
-            public static readonly MemAccessTypes FLOAT = new("FLOAT");
-            public static readonly MemAccessTypes DOUBLE = new("DOUBLE");
-            public static readonly MemAccessTypes HALF = new("HALF");
-            public static readonly MemAccessTypes UHALF = new("UHALF");
-
-            public string Value { get; private set; }
-            private MemAccessTypes (string value)
-            {
-                Value = value;
-            }
         }
     }
 }
