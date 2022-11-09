@@ -91,7 +91,11 @@
             for (int l = (int)textSegment; l < file.Length; l++)
             {
                 if (file[l].Trim() != String.Empty)
-                    assembly.CodeSegment.Add(DecodeInstruction(file[l].Trim(), l)); //Check instruction sintax and add them to the assembly.
+                {
+                    string decoded = DecodeInstruction(file[l].Trim(), l);
+                    assembly.CodeSegment.Add(decoded); //Check instruction sintax and add them to the assembly.
+                    assembly.OriginalText.Add(decoded, file[l].Trim());
+                }
                 if (assembly.Labels.ContainsKey((uint)(l))) //Update the labels to their placement in the segment
                 {
                     string label = assembly.Labels[(uint)l];

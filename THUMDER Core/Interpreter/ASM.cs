@@ -4,6 +4,7 @@
     {
         public List<string> DataSegment { get; private set; }
         public List<string> CodeSegment { get; private set; }
+        public Dictionary<string, string> OriginalText { get; private set; }
         public Dictionary<uint, string> Labels { get; private set; }
         public Dictionary<uint, string> TextLabels { get; private set; }
         public Dictionary<uint, string> GlobalLabels { get; private set; }
@@ -14,6 +15,7 @@
         {
             this.DataSegment = new List<string>();
             this.CodeSegment = new List<string>();
+            this.OriginalText = new Dictionary<string, string>();
             this.Labels = new Dictionary<uint, string>();
             this.TextLabels = new Dictionary<uint, string>();
             this.GlobalLabels = new Dictionary<uint, string>();

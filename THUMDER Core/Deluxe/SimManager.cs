@@ -34,6 +34,8 @@ namespace THUMDER.Deluxe
         /// </summary>
         private static readonly Dictionary<int, int> Breakpoints = new Dictionary<int, int>();
 
+        private static readonly Dictionary<uint, string> OriginalText = new Dictionary<uint, string>();
+
         private SimManager()
         {
             this.alus = new List<ALU>();
