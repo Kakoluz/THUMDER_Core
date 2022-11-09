@@ -162,7 +162,7 @@ namespace THUMDER
                             break;
                         case ConsoleKey.F4:
                             Console.Clear();
-                            Console.WriteLine("Enter the address to read from (Decimal or Hex): ");
+                            Console.WriteLine("Enter the address to read from (add 0x for hex): ");
                             string text = Console.ReadLine();
                             int textnumber;
                             if (text != null && text.Contains("0x"))
@@ -257,11 +257,20 @@ namespace THUMDER
                             break;
                         case ConsoleKey.F9:
                             Console.Clear();
-                            Console.WriteLine("Enter the address of the breakpoint: ");
+                            Console.WriteLine("Enter the address of the breakpoint (add 0x for hex): ");
                             string input = Console.ReadLine();
                             try
                             {
-                                int address = Convert.ToInt32(input);
+                                int address;
+                                if (input.Contains("0x"))
+                                {
+                                    input = input.Replace("0x", "");
+                                    address = Convert.ToInt32(input, 16);
+                                }
+                                else
+                                {
+                                     address = Convert.ToInt32(input);
+                                }
                                 if (address != null && address >= 0 && address < SimManager.Memsize)
                                 {
                                     SimManager.SetBreakpoint(address);
@@ -281,15 +290,26 @@ namespace THUMDER
                             break;
                         case ConsoleKey.F10:
                             Console.Clear();
-                            Console.WriteLine("Enter the address of the breakpoint: ");
+                            Console.WriteLine("Currently active breakpoints: ");
+                            Console.WriteLine(SimManager.PrintBreakpoints());
+                            Console.WriteLine("\nEnter the address of the breakpoint (add 0x for hex): ");
                             input = Console.ReadLine();
                             try
                             {
-                                int address = Convert.ToInt32(input);
+                                int address;
+                                if (input.Contains("0x"))
+                                {
+                                    input = input.Replace("0x", "");
+                                    address = Convert.ToInt32(input, 16);
+                                }
+                                else
+                                {
+                                    address = Convert.ToInt32(input);
+                                }
                                 if (address != null && address >= 0 && address < SimManager.Memsize)
                                 {
                                     SimManager.RemoveBreakpoint(address);
-                                    Console.WriteLine("Breakpoint added successfully.");
+                                    Console.WriteLine("Breakpoint removed successfully.");
                                 }
                                 else
                                 {

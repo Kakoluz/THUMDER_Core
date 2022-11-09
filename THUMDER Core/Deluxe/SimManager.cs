@@ -86,7 +86,7 @@ namespace THUMDER.Deluxe
                 do
                 {
                     Instance.DoCycle();
-                } while (!Breakpoints.ContainsKey((int)Instance.PC));
+                } while (!Breakpoints.ContainsKey((int)Instance.PC) ^ Instance.stop);
             }
         }
 
@@ -100,6 +100,20 @@ namespace THUMDER.Deluxe
         {
             if (Breakpoints.ContainsKey(address))
                 Breakpoints.Remove(address);
+        }
+
+        internal static string PrintBreakpoints()
+        {
+            string output = String.Empty;
+            foreach(KeyValuePair<int, int> br in Breakpoints)
+            {
+                if (InstructionAddresses.ContainsKey((uint)br.Key))
+                    output += String.Format("0x{0}({2}){1,15}\n", br.Key.ToString("X8"), OriginalText[InstructionAddresses[(uint)br.Key]], br.Key.ToString());
+                else
+                    output += String.Format("0x{0} ({2}){1,15}\n", br.Key.ToString("X8"), "NOP", br.Key.ToString());
+
+            }
+            return output;
         }
 
         internal static string PrintRegisters()
@@ -399,6 +413,7 @@ namespace THUMDER.Deluxe
             ASM lastProgram = Instance.loadedProgram;
             Instance = new SimManager();
             labels.Clear();
+            Breakpoints.Clear();
             OriginalText.Clear();
             InstructionAddresses.Clear();
             LoadProgram(lastProgram);
