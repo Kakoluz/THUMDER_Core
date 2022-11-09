@@ -92,12 +92,14 @@ namespace THUMDER.Deluxe
 
         internal static void SetBreakpoint(int address)
         {
-            Breakpoints.Add(address, 1);
+            if (!Breakpoints.ContainsKey(address))
+                Breakpoints.Add(address, 1);
         }
 
         internal static void RemoveBreakpoint(int address)
         {
-            Breakpoints.Remove(address);
+            if (Breakpoints.ContainsKey(address))
+                Breakpoints.Remove(address);
         }
 
         internal static string PrintRegisters()
