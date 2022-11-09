@@ -270,6 +270,32 @@ namespace THUMDER.Deluxe
             return output;
         }
 
+        internal static string PrintPipelineShort()
+        {
+            string output = String.Empty;
+            output += String.Concat(String.Format("{0,35}{1,20}\n", "WB:", getInstruction(Instance.WBreg.Data)));
+            output += String.Concat(String.Format("{0,35}{1,20}\n", "MEM:", getInstruction(Instance.MEMreg.Data)));
+            if (Instance.RStall)
+            {
+                output += String.Concat(String.Format("{0,35}{1,5}{2,11}\n", "EX:", "(stalled)", getInstruction(Instance.EXreg.Data)));
+            }
+            else
+            {
+                output += String.Concat(String.Format("{0,35}{1,20}\n", "EX:", getInstruction(Instance.EXreg.Data)));
+            }
+            if (Instance.DStall)
+            {
+                output += String.Concat(String.Format("{0,35}{1,5}{2,11}\n", "ID:", "(stalled)", getInstruction(Instance.IDreg.Data)));
+
+            }
+            else
+            {
+                output += String.Concat(String.Format("{0,35}{1,20}\n", "ID:", getInstruction(Instance.IDreg.Data)));
+            }
+            output += String.Concat(String.Format("{0,35}{1,20}\n", "IF:", getInstruction(Instance.IFreg.Data)));
+            return output;
+        }
+
         private void DoCycle()
         {
             ++Cycles;

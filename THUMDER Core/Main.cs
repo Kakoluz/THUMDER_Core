@@ -134,17 +134,23 @@ namespace THUMDER
                         case ConsoleKey.F5:
                             Console.Clear();
                             SimManager.RunFullSimulation();
+                            Console.SetCursorPosition(30, 5);
                             Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n");
+                            Console.SetCursorPosition(0, 0);
                             break;
                         case ConsoleKey.F6:
                             Console.Clear();
                             SimManager.RunACycle();
-                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n");
+                            Console.SetCursorPosition(30 ,5);
+                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n" + SimManager.PrintPipelineShort());
+                            Console.SetCursorPosition(0,0);
                             break;
                         case ConsoleKey.F7:
                             Console.Clear();
                             SimManager.RunUntilBreakpoint();
-                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n");
+                            Console.SetCursorPosition(30, 5);
+                            Console.WriteLine("Cycles: " + SimManager.Instance.Cycles + "\n" + SimManager.PrintPipelineShort());
+                            Console.SetCursorPosition(0, 0);
                             break;
                         case ConsoleKey.F3:
                             Console.Clear();
