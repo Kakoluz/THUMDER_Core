@@ -1,4 +1,6 @@
-﻿namespace THUMDER.Deluxe
+﻿using System.Collections.Specialized;
+
+namespace THUMDER.Deluxe
 {    
     internal class ALU
     {
@@ -6,6 +8,7 @@
         public bool Done { get; private set; }
         private int cyclesRemaining;
         private int a, b, c, result, dest;
+        private BitVector32 opReg;
         private short operation;
 
         public ALU()
@@ -21,10 +24,11 @@
         /// <param name="b">Second operand.</param>
         /// <param name="op">Operation to execute.</param>
         /// <exception cref="Exception">If the ALU is already loaded with data and working.</exception>
-        public void LoadValues(int c, int a, int b, int op)
+        public void LoadValues(int c, int a, int b, int op, int inst)
         {
             if (!Busy)
             {
+                this.opReg = new BitVector32(inst);
                 this.c = c;
                 this.a = a;
                 this.b = b;
@@ -57,9 +61,10 @@
         /// Will return the result of the loaded operation when it finishes.
         /// </summary>
         /// <returns>The value or null if its not ready.</returns>
-        public int? GetValue(out int dest)
+        public int? GetValue(out int dest, out int inst)
         {
             dest = this.dest;
+            inst = this.opReg.Data;
             return Done ? result : null;
         }
         /// <summary>

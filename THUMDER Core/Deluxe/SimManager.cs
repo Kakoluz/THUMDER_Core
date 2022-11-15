@@ -197,7 +197,7 @@ namespace THUMDER.Deluxe
                 instructionsPipeline++;
             if (Instance.IDreg.Data != 0)
                 instructionsPipeline++;
-            if (Instance.OPreg.Data != 0)
+            if (Instance.EXreg.Data != 0)
                 instructionsPipeline++;
             if (Instance.MEMreg.Data != 0)
                 instructionsPipeline++;

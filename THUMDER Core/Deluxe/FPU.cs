@@ -1,10 +1,12 @@
-﻿namespace THUMDER.Deluxe
+﻿using System.Collections.Specialized;
+
+namespace THUMDER.Deluxe
 {
     internal class FPU
     {
         public bool Busy { get; private set; }
         public bool Done { get; private set; }
-        private bool isDouble;
+        private BitVector32 opReg;
         private int cyclesRemaining;
         private double a, b, result;
         private int c, dest;
@@ -24,10 +26,11 @@
         /// <param name="op">Operation to execute.</param>
         /// <param name="time">Clock cycles duration of operation.</param>
         /// <exception cref="Exception">If the FPU is already loaded with data and working.</exception>
-        public void LoadValues(int c, double a, double b, int op, int time)
+        public void LoadValues(int c, double a, double b, int op, int inst, int time)
         {
             if (!Busy)
             {
+                this.opReg = new BitVector32(inst);
                 this.c = c;
                 this.a = a;
                 this.b = b;
@@ -62,9 +65,9 @@
         /// <param name="dest">Register to store the result.</param>
         /// <param name="isDouble">Is the value a double?</param>
         /// <returns>The operated value or null if its not ready</returns>
-        public double? GetValue(out int dest, out bool isDouble)
+        public double? GetValue(out int dest, out int inst)
         {
-            isDouble = this.isDouble;
+            inst = this.opReg.Data;
             dest = this.dest;
             return Done ? result : null;
         }
@@ -79,14 +82,12 @@
                     result = a + b;
                     break;
                 case 4: //ADDD
-                    isDouble = true;
                     result = a + b;
                     break;
                 case 1: //SUBF
                     result = a - b;
                     break;
                 case 5: //SUBD
-                    isDouble = true;
                     result = a - b;
                     break;
                 case 14://MULT  integers are operated in the fpu and truncated.
@@ -95,7 +96,6 @@
                     result = a / b;
                     break;
                 case 6: //MULTD
-                    isDouble = true;
                     result = a * b;
                     break;
                 case 15://DIV  integers are operated in the fpu and truncated.
@@ -104,7 +104,6 @@
                     result = a / b;
                     break;
                 case 7: //DIVD
-                    isDouble = true;
                     result = a / b;
                     break;
                 case 19: //GTF
