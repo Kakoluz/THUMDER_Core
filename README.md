@@ -4,17 +4,15 @@
 For the Web UI Written by ***Nonondev96*** go to this repo: [THUMDER](https://github.com/nonodev96/THUMDER)
 
 ## Installation
-* **Windows:** Just grab the exe file from the release tab or build it. There are plans to add a *.msi* installer.
-* **Linux:** If using debian based distros, you can get the *.deb* file on release tab, other distros will need to manually build it.
-* **MacOS:** No installer or precompiled binary, you will have to build it.
+To install **THUMDER Core** go to the [release](https://github.com/Kakoluz/THUMDER_Core/releases/latest) tab and download the version for your operating system and architecture.
 
 ## Building
-Building ***THUMDER Core*** is as simple as opening the project in Visual Studio and building it. It comes with preconfigured profiles for Windows, Linux and Mac. And versions for x64 and ARM.
-
 ***Dependencies***
+* .NET Core 7 SDK : [Dotnet Installation](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
+
+After .NET is installed, just navigate to the folder containing the .csproj file and run:
 ``` console
-- Visual Studio 2019 or newer
-- .Net Core 6 SDK
+dotnet publish -c Release
 ```
 
 ## How to use
